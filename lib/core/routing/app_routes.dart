@@ -38,7 +38,7 @@ class AppRoutes {
   static const items = [
     AppRouteItem(
       route: dashboard,
-      title: 'Dashboard',
+      title: 'Ana Sayfa',
       subtitle: 'Günlük operasyon özeti',
       icon: Icons.dashboard_outlined,
     ),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/widgets/section_card.dart';
-import '../../../shared/widgets/mobile_stat_strip.dart';
-import '../../../shared/widgets/stat_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import 'alerts_mock_data.dart';
 import 'widgets/alert_filter_chips.dart';
 import 'widgets/alerts_list_card.dart';
@@ -32,124 +30,39 @@ class _AlertsPageState extends State<AlertsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionCard(
-          title: 'Uyarılar',
-          subtitle:
-              'Stok, finans, KDV, puantaj ve belge işleme süreçlerinden gelen proaktif uyarıları tek yerden yönetin.',
-          child: Text(
-            'Demo modunda uyarılar yerel mock veriyle üretilir; aksiyonlar ve durum değişiklikleri yalnızca ekranda tutulur.',
-          ),
-        ),
+        const _AlertsIntroCard(),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 700) {
-              return MobileStatStrip(
-                children: AlertsMockData.summaries
-                    .map(
-                      (summary) => MobileStatTile(
-                        title: summary.title,
-                        value: summary.value,
-                        trend: summary.trend,
-                        trendTone: summary.trendTone,
-                        icon: summary.icon,
-                        accentColor: summary.accentColor,
-                      ),
-                    )
-                    .toList(),
-              );
-            }
-
-            final columns = constraints.maxWidth >= 1200
-                ? 4
-                : constraints.maxWidth >= 720
-                    ? 2
-                    : 1;
-
-            return GridView.count(
-              crossAxisCount: columns,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: columns == 1 ? 2.25 : 1.25,
-              children: AlertsMockData.summaries
-                  .map(
-                    (summary) => StatCard(
-                      title: summary.title,
-                      value: summary.value,
-                      description: summary.description,
-                      trend: summary.trend,
-                      trendTone: summary.trendTone,
-                      icon: summary.icon,
-                      accentColor: summary.accentColor,
-                    ),
-                  )
-                  .toList(),
-            );
+        const _AlertSummaryStrip(summaries: AlertsMockData.summaries),
+        const SizedBox(height: 16),
+        AlertFilterChips(
+          selectedFilter: _selectedFilter,
+          onSelected: (filter) {
+            setState(() {
+              _selectedFilter = filter;
+            });
           },
         ),
         const SizedBox(height: 16),
-        SectionCard(
-          title: 'Uyarı Filtreleri',
-          subtitle: 'Kategori, öncelik veya çözülen uyarılara göre görünümü daraltın',
-          child: AlertFilterChips(
-            selectedFilter: _selectedFilter,
-            onSelected: (filter) {
-              setState(() {
-                _selectedFilter = filter;
-              });
-            },
+        const _DailySummaryCard(summary: AlertsMockData.dailySummary),
+        const SizedBox(height: 16),
+        AlertsListCard(
+          alerts: visibleAlerts,
+          onStartAction: _startAction,
+          onResolve: _resolveAlert,
+          onIgnore: _ignoreAlert,
+        ),
+        const SizedBox(height: 16),
+        _ResolvedAlertStrip(
+          alert: _alerts.firstWhere(
+            (alert) => alert.status == AlertStatus.resolved,
+            orElse: () => AlertsMockData.initialAlerts.last,
           ),
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 1080;
-
-            if (!isWide) {
-              return Column(
-                children: [
-                  AlertsListCard(
-                    alerts: visibleAlerts,
-                    onStartAction: _startAction,
-                    onResolve: _resolveAlert,
-                    onIgnore: _ignoreAlert,
-                  ),
-                  const SizedBox(height: 16),
-                  const AlertsSidePanel(
-                    priorityDistribution: AlertsMockData.priorityDistribution,
-                    categoryDistribution: AlertsMockData.categoryDistribution,
-                    dailySummary: AlertsMockData.dailySummary,
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 7,
-                  child: AlertsListCard(
-                    alerts: visibleAlerts,
-                    onStartAction: _startAction,
-                    onResolve: _resolveAlert,
-                    onIgnore: _ignoreAlert,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  flex: 3,
-                  child: AlertsSidePanel(
-                    priorityDistribution: AlertsMockData.priorityDistribution,
-                    categoryDistribution: AlertsMockData.categoryDistribution,
-                    dailySummary: AlertsMockData.dailySummary,
-                  ),
-                ),
-              ],
-            );
-          },
+        const AlertsSidePanel(
+          priorityDistribution: AlertsMockData.priorityDistribution,
+          categoryDistribution: AlertsMockData.categoryDistribution,
+          dailySummary: AlertsMockData.dailySummary,
         ),
       ],
     );
@@ -161,18 +74,32 @@ class _AlertsPageState extends State<AlertsPage> {
         .toList(growable: false);
 
     return switch (_selectedFilter) {
-      AlertFilter.all => nonIgnored,
-      AlertFilter.critical => nonIgnored
-          .where((alert) => alert.priority == AlertPriority.critical)
-          .toList(growable: false),
+      AlertFilter.all =>
+        nonIgnored
+            .where((alert) => alert.status == AlertStatus.active)
+            .toList(growable: false),
+      AlertFilter.critical =>
+        nonIgnored
+            .where((alert) => alert.priority == AlertPriority.critical)
+            .toList(growable: false),
       AlertFilter.stock => _filterByCategory(nonIgnored, AlertCategory.stock),
-      AlertFilter.finance => _filterByCategory(nonIgnored, AlertCategory.finance),
+      AlertFilter.finance => _filterByCategory(
+        nonIgnored,
+        AlertCategory.finance,
+      ),
       AlertFilter.kdv => _filterByCategory(nonIgnored, AlertCategory.kdv),
-      AlertFilter.employees => _filterByCategory(nonIgnored, AlertCategory.employees),
-      AlertFilter.document => _filterByCategory(nonIgnored, AlertCategory.document),
-      AlertFilter.resolved => nonIgnored
-          .where((alert) => alert.status == AlertStatus.resolved)
-          .toList(growable: false),
+      AlertFilter.employees => _filterByCategory(
+        nonIgnored,
+        AlertCategory.employees,
+      ),
+      AlertFilter.document => _filterByCategory(
+        nonIgnored,
+        AlertCategory.document,
+      ),
+      AlertFilter.resolved =>
+        nonIgnored
+            .where((alert) => alert.status == AlertStatus.resolved)
+            .toList(growable: false),
     };
   }
 
@@ -218,8 +145,269 @@ class _AlertsPageState extends State<AlertsPage> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _AlertsIntroCard extends StatelessWidget {
+  const _AlertsIntroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC4C6CF)),
+      ),
+      foregroundDecoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: Color(0xFF002045), width: 4)),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.only(left: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Proaktif riskleri ve bekleyen aksiyonları yönetin.',
+                style: TextStyle(
+                  color: Color(0xFF191C1D),
+                  fontSize: 14,
+                  height: 1.35,
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+            Icon(
+              Icons.notifications_active,
+              color: Color(0xFF002045),
+              size: 32,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AlertSummaryStrip extends StatelessWidget {
+  const _AlertSummaryStrip({required this.summaries});
+
+  final List<AlertSummaryMock> summaries;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: summaries.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          return _SummaryTile(summary: summaries[index]);
+        },
+      ),
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({required this.summary});
+
+  final AlertSummaryMock summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final critical = summary.trendTone == StatusTone.danger;
+    final success = summary.trendTone == StatusTone.success;
+    final color = critical
+        ? const Color(0xFFBA1A1A)
+        : success
+        ? const Color(0xFF2C694E)
+        : const Color(0xFF002045);
+
+    return Container(
+      width: 142,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: critical
+            ? const Color(0xFFFFDAD6)
+            : success
+            ? const Color(0xFFAEEECB)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: critical
+              ? const Color(0xFFBA1A1A)
+              : success
+              ? const Color(0xFF2C694E)
+              : const Color(0xFFC4C6CF),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            summary.title == 'Çözülen Uyarı' ? 'Çözülen' : summary.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: critical
+                  ? const Color(0xFF93000A)
+                  : const Color(0xFF43474E),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            summary.value,
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            _subtitle(summary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: critical
+                  ? const Color(0xFF93000A)
+                  : const Color(0xFF43474E),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _subtitle(AlertSummaryMock summary) {
+    return switch (summary.title) {
+      'Aktif Uyarı' => 'Çözüm bekliyor',
+      'Kritik Risk' => 'Acil aksiyon',
+      'Çözülen Uyarı' => 'Bu ay',
+      _ => summary.trend,
+    };
+  }
+}
+
+class _DailySummaryCard extends StatelessWidget {
+  const _DailySummaryCard({required this.summary});
+
+  final String summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC4C6CF)),
+      ),
+      foregroundDecoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: Color(0xFF2C694E), width: 4)),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.auto_awesome, color: Color(0xFF2C694E), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'AI Günlük Özeti',
+                    style: TextStyle(
+                      color: Color(0xFF2C694E),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    summary,
+                    style: const TextStyle(
+                      color: Color(0xFF43474E),
+                      fontSize: 13,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResolvedAlertStrip extends StatelessWidget {
+  const _ResolvedAlertStrip({required this.alert});
+
+  final AlertMock alert;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEEEF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFC4C6CF),
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_outline,
+            color: Color(0xFF2C694E),
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              alert.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFF43474E), fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const StatusBadge(label: 'ÇÖZÜLDÜ', tone: StatusTone.success),
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: () {},
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF002045),
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(42, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Detayı Gör',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

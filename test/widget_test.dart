@@ -14,7 +14,7 @@ void main() {
   testWidgets('dashboard renders on app launch', (WidgetTester tester) async {
     await pumpMobileApp(tester);
 
-    expect(find.text('Ana Sayfa'), findsOneWidget);
+    expect(find.text('Ana Sayfa'), findsWidgets);
     expect(find.text('Aylık Ciro'), findsOneWidget);
   });
 
@@ -23,7 +23,7 @@ void main() {
   ) async {
     await pumpMobileApp(tester);
 
-    expect(find.text('Ana Sayfa'), findsOneWidget);
+    expect(find.text('Ana Sayfa'), findsWidgets);
     expect(find.text('Belgeler'), findsOneWidget);
     expect(find.text('Stok'), findsOneWidget);
     expect(find.text('Finans'), findsOneWidget);

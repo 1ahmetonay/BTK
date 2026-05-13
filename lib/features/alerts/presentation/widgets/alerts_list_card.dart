@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/widgets/section_card.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../alerts_mock_data.dart';
 
@@ -21,25 +20,37 @@ class AlertsListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      title: 'Aktif Uyarılar',
-      subtitle: 'Filtreye göre listelenen riskler, öneriler ve yapılacak işler',
-      child: alerts.isEmpty
-          ? const _EmptyAlerts()
-          : ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: alerts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 14),
-              itemBuilder: (context, index) {
-                return _AlertTile(
-                  alert: alerts[index],
-                  onStartAction: onStartAction,
-                  onResolve: onResolve,
-                  onIgnore: onIgnore,
-                );
-              },
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'AKTİF UYARILAR',
+          style: TextStyle(
+            color: Color(0xFF43474E),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (alerts.isEmpty)
+          const _EmptyAlerts()
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: alerts.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return _AlertTile(
+                alert: alerts[index],
+                onStartAction: onStartAction,
+                onResolve: onResolve,
+                onIgnore: onIgnore,
+              );
+            },
+          ),
+      ],
     );
   }
 }
@@ -62,120 +73,78 @@ class _AlertTile extends StatelessWidget {
     final isResolved = alert.status == AlertStatus.resolved;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isResolved ? const Color(0xFFF8FAFC) : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isResolved
-              ? AppColors.line
-              : alert.priority.color.withValues(alpha: 0.28),
-        ),
+        color: isResolved ? const Color(0xFFEDEEEF) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC4C6CF)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 560;
-
-              final badges = Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _CategoryBadge(category: alert.category),
-                  StatusBadge(
-                    label: alert.priority.label,
-                    tone: alert.priority.tone,
-                  ),
-                  if (isResolved)
-                    const StatusBadge(
-                      label: 'Çözüldü',
-                      tone: StatusTone.success,
-                    ),
-                ],
-              );
-
-              if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    badges,
-                    const SizedBox(height: 10),
-                    _TitleTime(alert: alert),
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _TitleTime(alert: alert)),
-                  const SizedBox(width: 12),
-                  badges,
-                ],
-              );
-            },
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _AlertBadge(alert: alert),
+              const Spacer(),
+              Text(
+                _timeLabel(alert.timeLabel),
+                style: const TextStyle(
+                  color: Color(0xFF43474E),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 9),
           Text(
-            alert.description,
+            _title(alert),
             style: const TextStyle(
-              color: AppColors.muted,
-              height: 1.45,
+              color: Color(0xFF191C1D),
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              height: 1.25,
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.line),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  isResolved ? Icons.task_alt_outlined : Icons.auto_awesome_outlined,
-                  color: isResolved ? AppColors.emerald : AppColors.primary,
-                  size: 18,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    alert.recommendedAction,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 4),
+          Text(
+            _description(alert),
+            style: const TextStyle(
+              color: Color(0xFF43474E),
+              fontSize: 13,
+              height: 1.35,
             ),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Row(
             children: [
-              FilledButton.icon(
-                onPressed: isResolved ? null : () => onStartAction(alert),
-                icon: const Icon(Icons.play_arrow_outlined),
-                label: const Text('Aksiyon Al'),
-              ),
-              OutlinedButton.icon(
-                onPressed: isResolved ? null : () => onResolve(alert),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Çözüldü İşaretle'),
-              ),
-              TextButton.icon(
-                onPressed: () => onIgnore(alert),
-                icon: const Icon(
-                  Icons.visibility_off_outlined,
-                  color: AppColors.rose,
+              Expanded(
+                child: _ActionButton(
+                  label: 'Aksiyon Al',
+                  primary: true,
+                  onPressed: isResolved ? null : () => onStartAction(alert),
                 ),
-                label: const Text(
-                  'Yok Say',
-                  style: TextStyle(color: AppColors.rose),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'Çözüldü\nİşaretle',
+                  onPressed: isResolved ? null : () => onResolve(alert),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'Yok Say',
+                  onPressed: () => onIgnore(alert),
                 ),
               ),
             ],
@@ -184,87 +153,134 @@ class _AlertTile extends StatelessWidget {
       ),
     );
   }
+
+  String _title(AlertMock alert) {
+    return switch (alert.id) {
+      'document-damaged-dispatch' => 'İrsaliye hasar bildirimi',
+      'stock-filter-cost' => 'Filtre Kahve maliyet artışı',
+      'finance-overdue' => 'Gecikmiş tahsilat hatırlatması',
+      _ => alert.title,
+    };
+  }
+
+  String _description(AlertMock alert) {
+    return switch (alert.id) {
+      'stock-turk-kahvesi' => 'Mevcut stok 12 adet. 4 günlük stok kaldı.',
+      'finance-cash-risk' => '42.000 TL açık riski tespit edildi.',
+      'kdv-deadline' => 'Son tarih 26 Mayıs. Evraklarınızı tamamlayın.',
+      'attendance-check' =>
+        'Nisan ayı puantajları için onay bekleyen 4 personel var.',
+      'document-damaged-dispatch' =>
+        'Gelen son sevkiyatta 3 koli hasarlı olarak işaretlendi.',
+      'stock-filter-cost' => 'Birim maliyet son 1 ayda %15 artış gösterdi.',
+      'finance-overdue' => 'X Müşterisinden 15.000 TL ödeme 5 gün gecikti.',
+      _ => alert.description,
+    };
+  }
+
+  String _timeLabel(String timeLabel) {
+    if (timeLabel.contains('10:42')) {
+      return '1 saat önce';
+    }
+    if (timeLabel.contains('09:30')) {
+      return '3 saat önce';
+    }
+    if (timeLabel.contains('08:15')) {
+      return 'Dün';
+    }
+
+    return timeLabel;
+  }
 }
 
-class _TitleTime extends StatelessWidget {
-  const _TitleTime({required this.alert});
+class _AlertBadge extends StatelessWidget {
+  const _AlertBadge({required this.alert});
 
   final AlertMock alert;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: alert.priority.color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            alert.category.icon,
-            color: alert.priority.color,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                alert.title,
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                alert.timeLabel,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    final tone = alert.priority == AlertPriority.critical
+        ? StatusTone.danger
+        : alert.priority == AlertPriority.high
+        ? StatusTone.info
+        : alert.priority == AlertPriority.medium
+        ? StatusTone.neutral
+        : StatusTone.warning;
+
+    final label = '${_categoryLabel(alert.category)} | ${alert.priority.label}'
+        .toUpperCase();
+
+    return Transform.scale(
+      scale: 0.78,
+      alignment: Alignment.centerLeft,
+      child: StatusBadge(label: label, tone: tone),
     );
+  }
+
+  String _categoryLabel(AlertCategory category) {
+    return switch (category) {
+      AlertCategory.employees => 'İK',
+      AlertCategory.document => 'Belge',
+      _ => category.label,
+    };
   }
 }
 
-class _CategoryBadge extends StatelessWidget {
-  const _CategoryBadge({required this.category});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.onPressed,
+    this.primary = false,
+  });
 
-  final AlertCategory category;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F4F7),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(category.icon, size: 14, color: AppColors.muted),
-          const SizedBox(width: 5),
-          Text(
-            category.label,
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+    final child = Text(
+      label,
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    if (primary) {
+      return SizedBox(
+        height: 42,
+        child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF002045),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ],
+          child: child,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 42,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF191C1D),
+          side: const BorderSide(color: Color(0xFFC4C6CF)),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        ),
+        child: child,
       ),
     );
   }
@@ -279,9 +295,9 @@ class _EmptyAlerts extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.line),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC4C6CF)),
       ),
       child: const Column(
         children: [
