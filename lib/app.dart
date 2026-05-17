@@ -51,84 +51,159 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Scaffold(
-          resizeToAvoidBottomInset: true,
-          drawer: Drawer(
-            child: Builder(
-              builder: (drawerContext) {
-                return AppSidebar(
-                  currentRoute: _currentRoute,
-                  onRouteSelected: (route) {
-                    Navigator.of(drawerContext).pop();
-                    _goTo(route);
-                  },
-                );
-              },
-            ),
-          ),
-          bottomNavigationBar: SafeArea(
-            top: false,
-            child: _ShellBottomNavigation(
-              selectedIndex: _bottomIndexFor(_currentRoute),
-              onDestinationSelected: (index) => _goTo(_bottomRoutes[index]),
-            ),
-          ),
-          body: Column(
-            children: [
-              AppTopbar(
-                title: AppRoutes.titleFor(_currentRoute),
-                subtitle: AppRoutes.subtitleFor(_currentRoute),
-                compact: constraints.maxWidth < 700,
-                showMenuButton: true,
-                onAlertsPressed: () => _goTo(AppRoutes.alerts),
-                onSettingsPressed: () => _goTo(AppRoutes.settings),
-              ),
-              Expanded(
-                child: ColoredBox(
-                  color: Theme.of(context).colorScheme.surface,
-                  child: SafeArea(
-                    top: false,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 640),
-                        child: SingleChildScrollView(
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            reverseDuration: const Duration(milliseconds: 160),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeOutCubic,
-                            transitionBuilder: (child, animation) {
-                              final offsetAnimation = Tween<Offset>(
-                                begin: const Offset(0, 0.01),
-                                end: Offset.zero,
-                              ).animate(animation);
+        final isWide = constraints.maxWidth >= 840;
 
-                              return FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: offsetAnimation,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: KeyedSubtree(
-                              key: ValueKey<String>(_currentRoute),
-                              child: _pageFor(_currentRoute),
+        if (isWide) {
+          return _buildWideLayout(constraints);
+        }
+        return _buildNarrowLayout(constraints);
+      },
+    );
+  }
+
+  /// Geniş ekran (web / tablet): sidebar + geniş içerik alanı
+  Widget _buildWideLayout(BoxConstraints constraints) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: Row(
+        children: [
+          // Sabit sidebar
+          AppSidebar(
+            currentRoute: _currentRoute,
+            onRouteSelected: _goTo,
+          ),
+          // Ana içerik
+          Expanded(
+            child: Column(
+              children: [
+                AppTopbar(
+                  title: AppRoutes.titleFor(_currentRoute),
+                  subtitle: AppRoutes.subtitleFor(_currentRoute),
+                  compact: false,
+                  showMenuButton: false,
+                  onAlertsPressed: () => _goTo(AppRoutes.alerts),
+                  onSettingsPressed: () => _goTo(AppRoutes.settings),
+                ),
+                Expanded(
+                  child: ColoredBox(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        reverseDuration: const Duration(milliseconds: 160),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeOutCubic,
+                        transitionBuilder: (child, animation) {
+                          final offsetAnimation = Tween<Offset>(
+                            begin: const Offset(0, 0.01),
+                            end: Offset.zero,
+                          ).animate(animation);
+
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
                             ),
-                          ),
+                          );
+                        },
+                        child: KeyedSubtree(
+                          key: ValueKey<String>(_currentRoute),
+                          child: _pageFor(_currentRoute),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Dar ekran (mobil): bottom nav + drawer sidebar
+  Widget _buildNarrowLayout(BoxConstraints constraints) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      drawer: Drawer(
+        child: Builder(
+          builder: (drawerContext) {
+            return AppSidebar(
+              currentRoute: _currentRoute,
+              onRouteSelected: (route) {
+                Navigator.of(drawerContext).pop();
+                _goTo(route);
+              },
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _ShellBottomNavigation(
+          selectedIndex: _bottomIndexFor(_currentRoute),
+          onDestinationSelected: (index) => _goTo(_bottomRoutes[index]),
+        ),
+      ),
+      body: Column(
+        children: [
+          AppTopbar(
+            title: AppRoutes.titleFor(_currentRoute),
+            subtitle: AppRoutes.subtitleFor(_currentRoute),
+            compact: constraints.maxWidth < 700,
+            showMenuButton: true,
+            onAlertsPressed: () => _goTo(AppRoutes.alerts),
+            onSettingsPressed: () => _goTo(AppRoutes.settings),
+          ),
+          Expanded(
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: SafeArea(
+                top: false,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        reverseDuration: const Duration(milliseconds: 160),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeOutCubic,
+                        transitionBuilder: (child, animation) {
+                          final offsetAnimation = Tween<Offset>(
+                            begin: const Offset(0, 0.01),
+                            end: Offset.zero,
+                          ).animate(animation);
+
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: KeyedSubtree(
+                          key: ValueKey<String>(_currentRoute),
+                          child: _pageFor(_currentRoute),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 

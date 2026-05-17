@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/api_service.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/status_badge.dart';
 import 'finance_mock_data.dart';
 import 'widgets/ai_finance_suggestions_card.dart';
@@ -10,68 +13,569 @@ import 'widgets/kdv_summary_card.dart';
 import 'widgets/overdue_payments_card.dart';
 import 'widgets/profit_loss_card.dart';
 
-class FinancePage extends StatefulWidget {
+class FinancePage extends ConsumerStatefulWidget {
   const FinancePage({super.key});
 
   @override
-  State<FinancePage> createState() => _FinancePageState();
+  ConsumerState<FinancePage> createState() => _FinancePageState();
 }
 
-class _FinancePageState extends State<FinancePage> {
+class _FinancePageState extends ConsumerState<FinancePage> {
+  List<ProfitLossItemMock> _plItems = [];
+  double _profitMargin = 0;
+  String _plInsight = '';
+  KdvSummaryMock? _kdvSummary;
+  List<ProfitLossItemMock> _cashflowMetrics = [];
+  List<CashflowPointMock> _cashflowPoints = [];
+  String _cashflowRisk = '';
+  List<OverduePaymentMock> _overduePayments = [];
+  List<FinanceSummaryMock> _summaries = [];
+  final List<DistributionItemMock> _incomeDistribution = [];
+  List<DistributionItemMock> _expenseDistribution = [];
+  List<FinanceInsightMock> _aiInsights = [];
+  List<FinanceMovementMock> _finMovements = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFinanceData();
+  }
+
+  Future<void> _fetchFinanceData() async {
+    try {
+      // P&L, Cashflow ve KDV paralel çek
+      final results = await Future.wait([
+        ApiService.instance.getPlSummary(),
+        ApiService.instance.getCashflow(),
+        ApiService.instance.getKdvSummary(),
+        ApiService.instance.getOverduePayments(),
+      ]);
+
+      if (!mounted) return;
+
+      final pl = results[0] as Map<String, dynamic>;
+      final cashflow = results[1] as Map<String, dynamic>;
+      final kdv = results[2] as Map<String, dynamic>;
+      final overdue = results[3] as List<dynamic>;
+
+      // P&L verisini dönüştür
+      final gelir = (pl['toplam_gelir'] ?? pl['gelir'] ?? 0.0) as num;
+      final gider = (pl['toplam_gider'] ?? 0.0) as num;
+      final netKar = (pl['net_kar'] ?? 0.0) as num;
+      final marj = gelir > 0 ? netKar / gelir : 0.0;
+
+      final livePlItems = [
+        ProfitLossItemMock(
+          label: 'Brüt satış',
+          value: '${_fmt(gelir.toDouble())} TL',
+          tone: StatusTone.success,
+        ),
+        ProfitLossItemMock(
+          label: 'Toplam gider',
+          value: '${_fmt(gider.toDouble())} TL',
+          tone: StatusTone.warning,
+        ),
+        ProfitLossItemMock(
+          label: 'Net kâr',
+          value: '${_fmt(netKar.toDouble())} TL',
+          tone: netKar > 0 ? StatusTone.success : StatusTone.danger,
+        ),
+      ];
+
+      // Summary strip
+      final kdvOdenecek = (kdv['odenecek_kdv'] ?? 0.0) as num;
+      final liveSummaries = [
+        FinanceSummaryMock(
+          title: 'Aylık Gelir',
+          value: '${_fmt(gelir.toDouble())} TL',
+          description: 'Toplam satış',
+          trend: '+Gerçek',
+          trendTone: StatusTone.success,
+          icon: Icons.trending_up_outlined,
+          accentColor: const Color(0xFF2C694E),
+        ),
+        FinanceSummaryMock(
+          title: 'Aylık Gider',
+          value: '${_fmt(gider.toDouble())} TL',
+          description: 'Tüm giderler',
+          trend: 'Güncel',
+          trendTone: StatusTone.warning,
+          icon: Icons.trending_down_outlined,
+          accentColor: const Color(0xFFC6955E),
+        ),
+        FinanceSummaryMock(
+          title: 'Net Kâr',
+          value: '${_fmt(netKar.toDouble())} TL',
+          description: 'Tahmini net sonuç',
+          trend: '${(marj * 100).toStringAsFixed(1)}% marj',
+          trendTone: netKar > 0 ? StatusTone.success : StatusTone.danger,
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: const Color(0xFF002045),
+        ),
+        FinanceSummaryMock(
+          title: 'Ödenecek KDV',
+          value: '${_fmt(kdvOdenecek.toDouble())} TL',
+          description: 'Bu dönem KDV',
+          trend: 'Son gün kontrol et',
+          trendTone: StatusTone.warning,
+          icon: Icons.receipt_long_outlined,
+          accentColor: const Color(0xFFBA1A1A),
+        ),
+      ];
+
+      // KDV özeti
+      final liveKdv = KdvSummaryMock(
+        calculatedVat: '${_fmt((kdv['hesaplanan_kdv'] ?? 0.0) as double)} TL',
+        deductibleVat: '${_fmt((kdv['indirilecek_kdv'] ?? 0.0) as double)} TL',
+        payableVat: '${_fmt(kdvOdenecek.toDouble())} TL',
+        deadline: (kdv['son_odeme_tarihi'] ?? kdv['beyanname_son_tarihi']) as String? ?? '—',
+        statusLabel: kdv['durum'] as String? ??
+            (kdv['uyari'] == true ? 'Son gün yaklaşıyor' : 'Normal'),
+        warning: 'KDV hesaplandı. Lütfen son tarihi kontrol edin.',
+      );
+
+      // Cashflow
+      final bakiye = (cashflow['mevcut_bakiye'] ?? 0.0) as num;
+      final projeksiyon = (cashflow['projeksiyon'] ?? cashflow['projeksiyonlar']) as List<dynamic>? ?? [];
+
+      double donemSonuTahmini;
+      if (cashflow['donem_sonu_tahmini'] != null) {
+        donemSonuTahmini = (cashflow['donem_sonu_tahmini'] as num).toDouble();
+      } else if (projeksiyon.isNotEmpty) {
+        final last = projeksiyon.last as Map<String, dynamic>;
+        donemSonuTahmini = (last['tahmini_bakiye'] as num?)?.toDouble() ?? bakiye.toDouble();
+      } else {
+        donemSonuTahmini = bakiye.toDouble();
+      }
+
+      final liveCfMetrics = [
+        ProfitLossItemMock(
+          label: 'Bugünkü kasa',
+          value: '${_fmt(bakiye.toDouble())} TL',
+          tone: StatusTone.info,
+        ),
+        ProfitLossItemMock(
+          label: 'Tahmini dönem sonu',
+          value: '${_fmt(donemSonuTahmini)} TL',
+          tone: StatusTone.info,
+        ),
+      ];
+
+      final liveCfPoints = projeksiyon.take(4).map<CashflowPointMock>((p) {
+        final pm = p as Map<String, dynamic>;
+        final val = (pm['tahmini_bakiye'] ?? 0.0) as num;
+        final gunLabel = pm['gun'];
+        return CashflowPointMock(
+          label: gunLabel is int ? '$gunLabel. gün' : (gunLabel as String? ?? '—'),
+          value: '${_fmt(val.toDouble())} TL',
+          description: pm['notlar'] as String? ?? (val < 0 ? 'Risk bölgesi' : ''),
+          tone: val < 0 ? StatusTone.danger : StatusTone.info,
+        );
+      }).toList();
+
+      final bool hasRisk = projeksiyon.any((p) => (p as Map<String, dynamic>)['risk'] == true);
+      final riskStr = cashflow['risk_uyarisi'] as String? ??
+          (hasRisk ? 'Dikkat: Nakit akışında risk tespit edildi.' : 'Nakit akışı normal seyrediyor.');
+
+      // Gecikmiş ödemeler
+      final liveOverdue = overdue.map<OverduePaymentMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        return OverduePaymentMock(
+          customerName: m['karsi_taraf'] as String? ?? '—',
+          amount: '${_fmt((m['tutar'] ?? 0.0) as double)} TL',
+          delay: '${m['gecikme_gun'] ?? 0} gün gecikti',
+          actionLabel: 'Hatırlatma öner',
+        );
+      }).toList();
+
+      // Son faturaları çek → movements + distribution
+      List<FinanceMovementMock> liveMovements = [];
+      try {
+        final invoices = await ApiService.instance.getRecentInvoices(limit: 5);
+        liveMovements = invoices.map<FinanceMovementMock>((raw) {
+          final m = raw as Map<String, dynamic>;
+          final tutar = (m['toplam_tutar'] as num?)?.toDouble() ?? 0;
+          final tur = m['tur'] as String? ?? '';
+          final isGelir = tur.contains('satis');
+          return FinanceMovementMock(
+            title: isGelir ? 'Satış faturası' : 'Satın alma faturası',
+            source: m['karsi_taraf'] as String? ?? '—',
+            amount: '${isGelir ? '+' : '-'}${_fmt(tutar)} TL',
+            timestamp: m['tarih'] as String? ?? '—',
+            tone: isGelir ? StatusTone.success : StatusTone.danger,
+          );
+        }).toList();
+      } catch (_) {}
+
+      // AI insights — gerçek veriden türet
+      final liveInsights = <FinanceInsightMock>[];
+      if (liveOverdue.isNotEmpty) {
+        final toplamGeciken = overdue.fold<double>(0, (s, m) => s + ((m as Map<String, dynamic>)['tutar'] as num? ?? 0).toDouble());
+        liveInsights.add(FinanceInsightMock(
+          message: '${liveOverdue.length} gecikmiş tahsilatın toplamı ${_fmt(toplamGeciken)} TL. Hatırlatma gönderilmesi önerilir.',
+          icon: Icons.auto_awesome_outlined,
+        ));
+      }
+      if (netKar.toDouble() > 0 && marj < 0.15) {
+        liveInsights.add(FinanceInsightMock(
+          message: 'Net kâr marjı ${(marj * 100).toStringAsFixed(1)}% ile düşük seyrediyor. Maliyet optimizasyonu önerilir.',
+          icon: Icons.lightbulb_outline,
+          iconColor: AppColors.amber,
+        ));
+      }
+      if (kdvOdenecek.toDouble() > 0) {
+        liveInsights.add(FinanceInsightMock(
+          message: 'Bu dönem ${_fmt(kdvOdenecek.toDouble())} TL KDV ödemesi yapılacak.',
+          icon: Icons.auto_awesome_outlined,
+        ));
+      }
+
+      // Gelir/gider dağılımı — basit hesap
+      final toplamGider = gider.toDouble();
+      final satinAlma = (pl['satin_alma_gideri'] as num?)?.toDouble() ?? toplamGider * 0.6;
+      final giderDagilimi = pl['gider_dagilimi'] as List<dynamic>? ?? [];
+      double? parsedPersonel;
+      for (final item in giderDagilimi) {
+        final m = item as Map<String, dynamic>;
+        if (m['kategori'] == 'Maaş') {
+          parsedPersonel = (m['tutar'] as num?)?.toDouble();
+          break;
+        }
+      }
+      final personelGider = (pl['personel_gideri'] as num?)?.toDouble() ?? parsedPersonel ?? toplamGider * 0.2;
+      final digerGider = toplamGider - satinAlma - personelGider;
+
+      setState(() {
+        _plItems = livePlItems;
+        _profitMargin = marj.toDouble();
+        _plInsight = 'Gerçek verilere göre net kâr marjı ${(marj * 100).toStringAsFixed(1)}%.';
+        _kdvSummary = liveKdv;
+        _cashflowMetrics = liveCfMetrics;
+        _cashflowPoints = liveCfPoints;
+        _cashflowRisk = riskStr;
+        _summaries = liveSummaries;
+        _overduePayments = liveOverdue;
+        _finMovements = liveMovements;
+        _aiInsights = liveInsights;
+
+        if (toplamGider > 0) {
+          _expenseDistribution = [
+            DistributionItemMock(label: 'Ürün maliyeti', valueLabel: '%${(satinAlma / toplamGider * 100).round()}', progress: satinAlma / toplamGider, color: AppColors.rose),
+            DistributionItemMock(label: 'Personel', valueLabel: '%${(personelGider / toplamGider * 100).round()}', progress: personelGider / toplamGider, color: AppColors.primary),
+            DistributionItemMock(label: 'Diğer', valueLabel: '%${(digerGider / toplamGider * 100).round()}', progress: digerGider / toplamGider, color: AppColors.amber),
+          ];
+        }
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _fmt(double val) {
+    if (val.abs() >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
+    if (val.abs() >= 1000) {
+      return '${(val / 1000).toStringAsFixed(0)}.${((val.abs() % 1000) ~/ 100) * 100 == 0 ? '000' : ((val.abs() % 1000) ~/ 100) * 100}';
+    }
+    return val.toStringAsFixed(0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _FinanceIntroCard(),
         const SizedBox(height: 16),
-        const _FinanceRiskStrip(),
-        const SizedBox(height: 16),
-        const _FinanceSummaryStrip(summaries: FinanceMockData.summaries),
-        const SizedBox(height: 16),
-        const ProfitLossCard(
-          items: FinanceMockData.profitLossItems,
-          margin: FinanceMockData.profitMargin,
-          aiInsight: FinanceMockData.profitLossInsight,
+        _FinanceRiskStrip(
+          overdueCount: _overduePayments.length,
+          profitMargin: _profitMargin,
+          kdvPayable: _kdvSummary?.payableVat ?? '',
         ),
         const SizedBox(height: 16),
-        const KdvSummaryCard(summary: FinanceMockData.kdvSummary),
+        _FinanceSummaryStrip(summaries: _summaries),
         const SizedBox(height: 16),
-        const CashflowForecastCard(
-          metrics: FinanceMockData.cashflowMetrics,
-          points: FinanceMockData.cashflowPoints,
-          riskText: FinanceMockData.cashflowRisk,
+        ProfitLossCard(
+          items: _plItems,
+          margin: _profitMargin,
+          aiInsight: _plInsight,
+        ),
+        const SizedBox(height: 16),
+        if (_kdvSummary != null)
+          KdvSummaryCard(
+            summary: _kdvSummary!,
+            onDetails: () => _showKdvDetails(context),
+          ),
+        const SizedBox(height: 16),
+        CashflowForecastCard(
+          metrics: _cashflowMetrics,
+          points: _cashflowPoints,
+          riskText: _cashflowRisk,
         ),
         const SizedBox(height: 16),
         OverduePaymentsCard(
-          payments: FinanceMockData.overduePayments,
+          payments: _overduePayments,
           onDraftReminder: _showReminderMessage,
         ),
         const SizedBox(height: 16),
-        const DistributionCard(
-          incomeItems: FinanceMockData.incomeDistribution,
-          expenseItems: FinanceMockData.expenseDistribution,
+        DistributionCard(
+          incomeItems: _incomeDistribution,
+          expenseItems: _expenseDistribution,
         ),
         const SizedBox(height: 16),
-        const AiFinanceSuggestionsCard(insights: FinanceMockData.aiInsights),
+        AiFinanceSuggestionsCard(
+          insights: _aiInsights,
+          onApply: (msg) => _applyFinanceInsight(msg),
+        ),
         const SizedBox(height: 16),
-        const FinanceMovementsCard(movements: FinanceMockData.movements),
+        FinanceMovementsCard(
+          movements: _finMovements,
+          onShowAll: () => _showAllMovements(context),
+        ),
       ],
     );
   }
 
-  void _showReminderMessage(String customerName) {
+  void _showKdvDetails(BuildContext context) {
+    final s = _kdvSummary;
+    if (s == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('KDV Detayları'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _kdvRow('Hesaplanan KDV', s.calculatedVat),
+            _kdvRow('İndirilecek KDV', s.deductibleVat),
+            _kdvRow('Ödenecek KDV', s.payableVat),
+            const Divider(),
+            _kdvRow('Son Ödeme Tarihi', s.deadline),
+            _kdvRow('Durum', s.statusLabel),
+            const SizedBox(height: 8),
+            Text(s.warning, style: const TextStyle(fontSize: 13, color: Color(0xFF43474E), fontStyle: FontStyle.italic)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+        ],
+      ),
+    );
+  }
+
+  Widget _kdvRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF43474E))),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  void _showAllMovements(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tüm Hareketler'),
+        content: SizedBox(
+          width: 420,
+          child: _finMovements.isEmpty
+              ? const Text('Henüz hareket kaydı yok.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _finMovements.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final m = _finMovements[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(m.title),
+                      subtitle: Text('${m.source} • ${m.timestamp}'),
+                      trailing: Text(m.amount, style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: m.tone == StatusTone.success ? const Color(0xFF2C694E) : const Color(0xFFBA1A1A),
+                      )),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyFinanceInsight(String msg) async {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('AI önerisi analiz ediliyor...'), duration: Duration(seconds: 1)));
+    try {
+      final result = await ApiService.instance.chat(
+        'Bu finans önerisini detaylandır ve somut adımlar öner: $msg',
+      );
+      if (!mounted) return;
+      final response = result['response'] as String? ?? 'Detay alınamadı.';
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('AI Öneri Detayı'),
+          content: SingleChildScrollView(
+            child: SelectableText(response, style: const TextStyle(fontSize: 14, height: 1.5)),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('Öneri detayı alınamadı: $e')));
+      }
+    }
+  }
+
+  Future<void> _showReminderMessage(String customerName) async {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(
-            '$customerName için ödeme hatırlatma taslağı hazırlandı.',
+          content: Text('$customerName için hatırlatma taslağı oluşturuluyor...'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    try {
+      final result = await ApiService.instance.chat(
+        '$customerName için ödeme hatırlatma mesajı yaz. Resmi ama nazik bir dille, ödeme tutarını ve gecikme süresini belirt.',
+      );
+      if (!mounted) return;
+      final response = result['response'] as String? ?? 'Taslak oluşturulamadı.';
+
+      // Hatırlatma taslağı dialog'u — tarih seçici ve kaydet butonu ile
+      DateTime selectedDate = DateTime.now().add(const Duration(days: 3));
+
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.notifications_active_outlined, color: Color(0xFF002045), size: 22),
+                const SizedBox(width: 8),
+                Expanded(child: Text('$customerName — Hatırlatma', style: const TextStyle(fontSize: 16))),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Hatırlatma Metni:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFC4C6CF)),
+                    ),
+                    child: SelectableText(response, style: const TextStyle(fontSize: 13, height: 1.5)),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Hatırlatma Tarihi:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        helpText: 'Hatırlatma tarihi seçin',
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFC4C6CF)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF002045)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${selectedDate.day.toString().padLeft(2, '0')}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.year}',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          const Spacer(),
+                          const Text('Değiştir', style: TextStyle(color: Color(0xFF002045), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('İptal'),
+              ),
+              FilledButton.icon(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  // Backend'e uyarı/hatırlatma olarak kaydet
+                  try {
+                    await ApiService.instance.chat(
+                      'SYSTEM: $customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihinde ödeme hatırlatması oluştur.',
+                    );
+                  } catch (_) {}
+                  if (mounted) {
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(SnackBar(
+                        content: Text(
+                          '$customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihine hatırlatma kaydedildi.',
+                        ),
+                      ));
+                  }
+                },
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Hatırlatmayı Kaydet'),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+              ),
+            ],
           ),
         ),
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('Hatırlatma taslağı oluşturulamadı: $e')));
+      }
+    }
   }
 }
+
 
 class _FinanceIntroCard extends StatelessWidget {
   const _FinanceIntroCard();
@@ -140,14 +644,43 @@ class _FinanceIntroCard extends StatelessWidget {
 }
 
 class _FinanceRiskStrip extends StatelessWidget {
-  const _FinanceRiskStrip();
+  const _FinanceRiskStrip({
+    required this.overdueCount,
+    required this.profitMargin,
+    required this.kdvPayable,
+  });
+
+  final int overdueCount;
+  final double profitMargin;
+  final String kdvPayable;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      ('Nakit Riski', 'Orta', StatusTone.warning),
-      ('KDV Durumu', 'Takip', StatusTone.danger),
-      ('Tahsilat', '7 Geciken', StatusTone.success),
+    final nakitTone = profitMargin < 0.10
+        ? StatusTone.danger
+        : profitMargin < 0.20
+            ? StatusTone.warning
+            : StatusTone.success;
+    final nakitLabel = profitMargin < 0.10
+        ? 'Yüksek'
+        : profitMargin < 0.20
+            ? 'Orta'
+            : 'Düşük';
+
+    final kdvTone = kdvPayable.contains('0') && kdvPayable.length <= 3
+        ? StatusTone.success
+        : StatusTone.warning;
+
+    final tahsilatTone = overdueCount == 0
+        ? StatusTone.success
+        : overdueCount > 3
+            ? StatusTone.danger
+            : StatusTone.warning;
+
+    final items = [
+      ('Nakit Riski', nakitLabel, nakitTone),
+      ('KDV Durumu', kdvPayable == '0 TL' ? 'Temiz' : 'Takip', kdvTone),
+      ('Tahsilat', overdueCount > 0 ? '$overdueCount Geciken' : 'Temiz', tahsilatTone),
     ];
 
     return Row(

@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../chat_mock_data.dart';
@@ -12,6 +13,8 @@ class ChatConversationCard extends StatelessWidget {
     required this.onSubmit,
     this.suggestedQuestions = const [],
     this.onQuestionSelected,
+    this.onFileAttached,
+    this.onFileBytesAttached,
     super.key,
   });
 
@@ -22,6 +25,8 @@ class ChatConversationCard extends StatelessWidget {
   final ValueChanged<String> onSubmit;
   final List<SuggestedQuestionMock> suggestedQuestions;
   final ValueChanged<String>? onQuestionSelected;
+  final ValueChanged<String>? onFileAttached;
+  final void Function(String name, List<int>? bytes)? onFileBytesAttached;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +111,15 @@ class ChatConversationCard extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    try {
+                      final result = await FilePicker.platform.pickFiles(withData: true);
+                      if (result == null || result.files.isEmpty) return;
+                      final file = result.files.first;
+                      onFileAttached?.call(file.name);
+                      onFileBytesAttached?.call(file.name, file.bytes);
+                    } catch (_) {}
+                  },
                   icon: const Icon(Icons.attach_file),
                   color: const Color(0xFF43474E),
                   tooltip: 'Dosya ekle',

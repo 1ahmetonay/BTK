@@ -7,11 +7,15 @@ class DocumentUploadCard extends StatelessWidget {
   const DocumentUploadCard({
     required this.selectedFileName,
     required this.supportedFormats,
+    this.onPickFile,
+    this.onAnalyze,
     super.key,
   });
 
   final String selectedFileName;
   final String supportedFormats;
+  final VoidCallback? onPickFile;
+  final VoidCallback? onAnalyze;
 
   @override
   Widget build(BuildContext context) {
@@ -66,12 +70,12 @@ class DocumentUploadCard extends StatelessWidget {
                   alignment: WrapAlignment.center,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: onPickFile ?? () {},
                       icon: const Icon(Icons.attach_file_outlined),
                       label: const Text('Belge Seç'),
                     ),
                     FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: onAnalyze ?? () {},
                       icon: const Icon(Icons.auto_awesome_outlined),
                       label: const Text('Gemini ile Analiz Et'),
                     ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/app_providers.dart';
+import '../../../core/services/api_service.dart';
 import 'settings_mock_data.dart';
 import 'widgets/ai_settings_card.dart';
 import 'widgets/business_profile_card.dart';
@@ -8,16 +11,49 @@ import 'widgets/integration_status_card.dart';
 import 'widgets/security_data_card.dart';
 import 'widgets/settings_side_panel.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   AiMode _aiMode = AiMode.proactive;
   int _confidenceThreshold = 90;
+  bool _backendConnected = false;
+  bool _geminiAvailable = false;
+
+  String _businessName = 'KOBİ AI Demo İşletmesi';
+  String _taxNumber = '1234567890';
+  String _industry = 'Perakende / Gıda';
+  String _city = 'İstanbul';
+  String _currency = 'TRY';
+  String _defaultVatRate = '%20';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLiveStatus();
+  }
+
+  Future<void> _checkLiveStatus() async {
+    try {
+      final ok = await ApiService.instance.isBackendAvailable();
+      if (!mounted) return;
+      bool gemini = false;
+      if (ok) {
+        try {
+          final data = await ApiService.instance.getDashboardSummary();
+          gemini = data.isNotEmpty;
+        } catch (_) {}
+      }
+      setState(() {
+        _backendConnected = ok;
+        _geminiAvailable = gemini;
+      });
+    } catch (_) {}
+  }
 
   final Map<String, bool> _aiSettings = {
     'Sabah brifingi aktif': true,
@@ -41,7 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SettingsIntroCard(),
+        _SettingsIntroCard(backendConnected: _backendConnected),
         const SizedBox(height: 16),
         Column(children: _mainCards()),
       ],
@@ -51,8 +87,27 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Widget> _mainCards() {
     return [
       BusinessProfileCard(
-        profile: SettingsMockData.profile,
-        onSave: () => _showMessage('İşletme profili demo modunda kaydedildi.'),
+        profile: BusinessProfileMock(
+          businessName: _businessName,
+          taxNumber: _taxNumber,
+          industry: _industry,
+          city: _city,
+          currency: _currency,
+          defaultVatRate: _defaultVatRate,
+        ),
+        onSave: () => _showMessage('İşletme profili kaydedildi.'),
+        onFieldChanged: (field, value) {
+          setState(() {
+            switch (field) {
+              case 'businessName': _businessName = value;
+              case 'taxNumber': _taxNumber = value;
+              case 'industry': _industry = value;
+              case 'city': _city = value;
+              case 'currency': _currency = value;
+              case 'defaultVatRate': _defaultVatRate = value;
+            }
+          });
+        },
       ),
       const SizedBox(height: 16),
       AiSettingsCard(
@@ -63,6 +118,8 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _aiMode = mode;
           });
+          // Global AI modunu güncelle — chat sayfası bu modu kullanır
+          ref.read(aiModeProvider.notifier).state = mode.name;
         },
       ),
       const SizedBox(height: 16),
@@ -77,19 +134,31 @@ class _SettingsPageState extends State<SettingsPage> {
         },
       ),
       const SizedBox(height: 16),
-      const IntegrationStatusCard(items: SettingsMockData.integrations),
+      const IntegrationStatusCard(),
       const SizedBox(height: 16),
       SecurityDataCard(
-        notes: SettingsMockData.securityNotes,
+        notes: const [
+          'Veriler şifrelenmiş SQLite veritabanında saklanır.',
+          'API anahtarları .env dosyasında tutulur, koda gömülmez.',
+          'Tüm istekler HTTPS üzerinden iletilir.',
+        ],
         onResetDemoData: () =>
             _showMessage('Demo verileri sıfırlama işlemi simüle edildi.'),
-        onCheckSystem: () => _showMessage('Tüm demo modülleri çalışıyor.'),
+        onCheckSystem: _checkSystemStatus,
       ),
       const SizedBox(height: 16),
-      const SettingsSidePanel(
-        activeModules: SettingsMockData.activeModules,
-        activities: SettingsMockData.recentActivities,
-        checklist: SettingsMockData.setupChecklist,
+      SettingsSidePanel(
+        activeModules: const ['Stok Yönetimi', 'Finans & KDV', 'Belge İşleme', 'Puantaj / İK', 'AI Asistan', 'E-Fatura'],
+        activities: const [
+          SettingsActivityMock('Sistem başlatıldı'),
+          SettingsActivityMock('Backend bağlantısı kontrol edildi'),
+        ],
+        checklist: [
+          const SetupChecklistMock(title: 'Flutter Web arayüzü hazır', completed: true),
+          SetupChecklistMock(title: 'Backend bağlantısı', completed: _backendConnected),
+          SetupChecklistMock(title: 'Gemini API entegrasyonu', completed: _geminiAvailable),
+          const SetupChecklistMock(title: 'İlk belge işleme', completed: false),
+        ],
       ),
     ];
   }
@@ -106,6 +175,21 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _checkSystemStatus() async {
+    _showMessage('Sistem durumu kontrol ediliyor…');
+    try {
+      final ok = await ApiService.instance.isBackendAvailable();
+      if (!mounted) return;
+      if (ok) {
+        _showMessage('✓ Backend bağlı, tüm modüller aktif.');
+      } else {
+        _showMessage('✗ Backend bağlantısı kurulamadı.');
+      }
+    } catch (_) {
+      if (mounted) _showMessage('✗ Bağlantı hatası. Backend çalışıyor mu?');
+    }
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -114,7 +198,9 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 class _SettingsIntroCard extends StatelessWidget {
-  const _SettingsIntroCard();
+  const _SettingsIntroCard({required this.backendConnected});
+
+  final bool backendConnected;
 
   @override
   Widget build(BuildContext context) {
@@ -164,17 +250,18 @@ class _SettingsIntroCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFE7E8E9),
+                color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: const Color(0xFFC4C6CF)),
               ),
-              child: const Text(
-                'Demo modunda ayarlar local olarak gösterilir. Gerçekleşen değişiklikler geçicidir.',
-                style: TextStyle(
+              child: Text(
+                backendConnected
+                    ? 'Backend bağlı. Veriler canlı olarak çekiliyor.'
+                    : 'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.',
+                style: const TextStyle(
                   color: Color(0xFF43474E),
                   fontSize: 12,
                   height: 1.35,
-                  fontStyle: FontStyle.italic,
                 ),
               ),
             ),

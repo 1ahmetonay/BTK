@@ -1,10 +1,68 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/routing/app_routes.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/status_badge.dart';
 import 'dashboard_mock_data.dart';
 
-class DashboardPage extends StatelessWidget {
+/// Helper: API verisinden stat kartlarını oluşturur
+List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
+  final toplam = stats['toplam_sku'] ?? 0;
+  final kritik = stats['kritik_stok'] ?? 0;
+  final bakiye = stats['mevcut_bakiye'] ?? 0;
+  final stokDegeri = stats['stok_degeri'] ?? 0;
+  final bekleyenOdeme = stats['bekleyen_odeme'] ?? 0;
+  final kdv = stats['odenecek_kdv'] ?? 0;
+
+  String formatTL(num v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M TL';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K TL';
+    return '${v.toStringAsFixed(0)} TL';
+  }
+
+  return [
+    DashboardStatData(
+      title: 'Stok Değeri',
+      value: formatTL(stokDegeri),
+      description: '$toplam aktif SKU',
+      changeLabel: '$toplam SKU',
+      changeTone: StatusTone.success,
+      icon: Icons.payments_outlined,
+      accentColor: const Color(0xFF002045),
+    ),
+    DashboardStatData(
+      title: 'Nakit Bakiye',
+      value: formatTL(bakiye),
+      description: 'Mevcut kasa durumu',
+      changeLabel: bakiye > 0 ? 'Pozitif' : 'Negatif',
+      changeTone: bakiye > 0 ? StatusTone.success : StatusTone.danger,
+      icon: Icons.account_balance_wallet_outlined,
+      accentColor: const Color(0xFF2C694E),
+    ),
+    DashboardStatData(
+      title: 'Kritik Stok',
+      value: '$kritik ürün',
+      description: 'Min seviye altında',
+      changeLabel: kritik > 0 ? 'Dikkat' : 'İyi',
+      changeTone: kritik > 0 ? StatusTone.warning : StatusTone.success,
+      icon: Icons.inventory_2_outlined,
+      accentColor: const Color(0xFFC6955E),
+    ),
+    DashboardStatData(
+      title: 'Bekleyen Ödeme',
+      value: formatTL(bekleyenOdeme),
+      description: 'KDV: ${formatTL(kdv)}',
+      changeLabel: bekleyenOdeme > 0 ? 'Vadeli' : 'Temiz',
+      changeTone: bekleyenOdeme > 0 ? StatusTone.danger : StatusTone.success,
+      icon: Icons.receipt_long_outlined,
+      accentColor: const Color(0xFFBA1A1A),
+    ),
+  ];
+}
+
+class DashboardPage extends ConsumerWidget {
   const DashboardPage({
     this.onNavigate,
     super.key,
@@ -13,23 +71,57 @@ class DashboardPage extends StatelessWidget {
   final ValueChanged<String>? onNavigate;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _WelcomeCard(),
-        const SizedBox(height: 22),
-        const _StatsStrip(),
-        const SizedBox(height: 22),
-        const _MorningBriefingCard(),
-        const SizedBox(height: 22),
-        _QuickActions(onNavigate: onNavigate),
-        const SizedBox(height: 22),
-        const _PriorityAlerts(),
-        const SizedBox(height: 22),
-        const _AiRecommendations(),
-        const SizedBox(height: 12),
-      ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboardDataAsync = ref.watch(dashboardSummaryProvider);
+
+    return dashboardDataAsync.when(
+      data: (data) {
+        final brief = data['sabah_brifingi'] ?? 'Günaydın! Verileriniz yükleniyor...';
+        final stats = data['stats'] as Map<String, dynamic>? ?? {};
+        final kritikStoklar = data['kritik_stoklar'] as List<dynamic>? ?? [];
+        final gecikOdemeler = data['gecikmis_odemeler'] as List<dynamic>? ?? [];
+        final apiStats = _buildStatsFromApi(stats);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _WelcomeCard(briefing: brief),
+            const SizedBox(height: 22),
+            _StatsStrip(stats: apiStats),
+            const SizedBox(height: 22),
+            _MorningBriefingCard(
+              kritikStoklar: kritikStoklar,
+              gecikOdemeler: gecikOdemeler,
+              kdvOzet: data['kdv_ozet'] as Map<String, dynamic>? ?? {},
+              fullBriefText: brief,
+            ),
+            const SizedBox(height: 22),
+            _QuickActions(onNavigate: onNavigate),
+            const SizedBox(height: 22),
+            _PriorityAlerts(
+              kritikStoklar: kritikStoklar,
+              gecikOdemeler: gecikOdemeler,
+            ),
+            const SizedBox(height: 22),
+            _AiRecommendations(onNavigate: onNavigate),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _WelcomeCard(briefing: 'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.'),
+            const SizedBox(height: 22),
+            const _StatsStrip(stats: []),
+            const SizedBox(height: 22),
+            _QuickActions(onNavigate: onNavigate),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
     );
   }
 }
@@ -49,7 +141,9 @@ class _DashboardColors {
 }
 
 class _WelcomeCard extends StatelessWidget {
-  const _WelcomeCard();
+  const _WelcomeCard({required this.briefing});
+
+  final String briefing;
 
   @override
   Widget build(BuildContext context) {
@@ -69,24 +163,16 @@ class _WelcomeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Günaydın',
+                      'AI Sabah Brifingi',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             color: _DashboardColors.primary,
                             fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 12),
                     Text(
-                      'Bugün 3 öncelikli konu var',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: const Color(0xFF191C1D),
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Kritik stok, nakit riski ve KDV son tarihi takip edilmeli.',
-                      style: TextStyle(
+                      briefing,
+                      style: const TextStyle(
                         color: _DashboardColors.muted,
                         fontSize: 16,
                         height: 1.45,
@@ -104,7 +190,9 @@ class _WelcomeCard extends StatelessWidget {
 }
 
 class _StatsStrip extends StatelessWidget {
-  const _StatsStrip();
+  const _StatsStrip({required this.stats});
+
+  final List<DashboardStatData> stats;
 
   @override
   Widget build(BuildContext context) {
@@ -113,12 +201,12 @@ class _StatsStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
-        itemCount: DashboardMockData.stats.length,
+        itemCount: stats.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           return SizedBox(
             width: 142,
-            child: _StatTile(data: DashboardMockData.stats[index]),
+            child: _StatTile(data: stats[index]),
           );
         },
       ),
@@ -210,11 +298,101 @@ extension on DashboardStatData {
   }
 }
 
+void _showFullBrief(BuildContext context, String briefText) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 600),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: const BoxDecoration(
+                color: Color(0xFF002045),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'Günlük AI Brifing',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: SelectableText(
+                  briefText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: Color(0xFF1D1D1F),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF002045),
+                  ),
+                  child: const Text('Kapat'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _MorningBriefingCard extends StatelessWidget {
-  const _MorningBriefingCard();
+  const _MorningBriefingCard({
+    required this.kritikStoklar,
+    required this.gecikOdemeler,
+    required this.kdvOzet,
+    this.fullBriefText,
+  });
+
+  final List<dynamic> kritikStoklar;
+  final List<dynamic> gecikOdemeler;
+  final Map<String, dynamic> kdvOzet;
+  final String? fullBriefText;
 
   @override
   Widget build(BuildContext context) {
+    // Gerçek veriden brief satırları oluştur
+    final firstCritical = kritikStoklar.isNotEmpty
+        ? kritikStoklar.first as Map<String, dynamic>
+        : null;
+    final stokText = firstCritical != null
+        ? '${firstCritical['isim'] ?? 'Ürün'} kritik seviyede: ${firstCritical['mevcut_stok'] ?? '?'} adet kaldı.'
+        : 'Stok seviyeleri kontrol altında.';
+
+    final odemeText = gecikOdemeler.isNotEmpty
+        ? '${gecikOdemeler.length} adet gecikmiş ödeme mevcut.'
+        : 'Gecikmiş ödeme bulunmuyor.';
+
+    final kdvSonTarih = kdvOzet['beyanname_son_tarihi'] ?? '—';
+    final kdvText = 'KDV beyanname son tarihi: $kdvSonTarih';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -240,27 +418,28 @@ class _MorningBriefingCard extends StatelessWidget {
           _BriefLine(
             icon: Icons.error_outline,
             iconColor: _DashboardColors.error,
-            text: '${DashboardMockData.stockAlerts.first.productName} kritik '
-                'seviyede: ${DashboardMockData.stockAlerts.first.quantity} kaldı.',
+            text: stokText,
           ),
           const SizedBox(height: 14),
-          const _BriefLine(
+          _BriefLine(
             icon: Icons.schedule_outlined,
             iconColor: _DashboardColors.warning,
-            text: '14 gün sonra 42.000 TL nakit açığı riski var.',
+            text: odemeText,
           ),
           const SizedBox(height: 14),
-          const _BriefLine(
+          _BriefLine(
             icon: Icons.event_outlined,
             iconColor: _DashboardColors.primary,
-            text: 'KDV beyanname son tarihi: 26 Mayıs.',
+            text: kdvText,
           ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 46,
             child: FilledButton(
-              onPressed: () {},
+              onPressed: fullBriefText != null && fullBriefText!.isNotEmpty
+                  ? () => _showFullBrief(context, fullBriefText!)
+                  : null,
               style: FilledButton.styleFrom(
                 backgroundColor: _DashboardColors.primary,
                 foregroundColor: Colors.white,
@@ -456,14 +635,55 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _PriorityAlerts extends StatelessWidget {
-  const _PriorityAlerts();
+  const _PriorityAlerts({
+    required this.kritikStoklar,
+    required this.gecikOdemeler,
+  });
+
+  final List<dynamic> kritikStoklar;
+  final List<dynamic> gecikOdemeler;
 
   @override
   Widget build(BuildContext context) {
+    final alerts = <Widget>[];
+
+    // Kritik stok uyarıları
+    for (final item in kritikStoklar.take(3)) {
+      final m = item as Map<String, dynamic>;
+      alerts.add(_AlertCard(
+        category: 'Stok Uyarısı',
+        title: '${m['isim'] ?? 'Ürün'} — ${m['mevcut_stok'] ?? '?'} adet kaldı',
+        badge: 'KRİTİK',
+        tone: StatusTone.danger,
+      ));
+      alerts.add(const SizedBox(height: 8));
+    }
+
+    // Gecikmiş ödeme uyarıları
+    for (final item in gecikOdemeler.take(2)) {
+      final m = item as Map<String, dynamic>;
+      alerts.add(_AlertCard(
+        category: 'Finans Uyarısı',
+        title: '${m['karsi_taraf'] ?? 'Ödeme'} — ${m['gecikme_gun'] ?? '?'} gün gecikmiş',
+        badge: 'YÜKSEK',
+        tone: StatusTone.warning,
+      ));
+      alerts.add(const SizedBox(height: 8));
+    }
+
+    if (alerts.isEmpty) {
+      alerts.add(const _AlertCard(
+        category: 'Bilgi',
+        title: 'Aktif uyarı bulunmuyor',
+        badge: 'İYİ',
+        tone: StatusTone.success,
+      ));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Öncelikli Uyarılar',
           style: TextStyle(
             color: _DashboardColors.primary,
@@ -471,27 +691,8 @@ class _PriorityAlerts extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        SizedBox(height: 14),
-        _AlertCard(
-          category: 'Stok Uyarısı',
-          title: 'Türk Kahvesi 250g kritik seviye',
-          badge: 'KRİTİK',
-          tone: StatusTone.danger,
-        ),
-        SizedBox(height: 8),
-        _AlertCard(
-          category: 'Finans Uyarısı',
-          title: 'Nakit açığı riski',
-          badge: 'KRİTİK',
-          tone: StatusTone.danger,
-        ),
-        SizedBox(height: 8),
-        _AlertCard(
-          category: 'KDV',
-          title: 'KDV son tarihi yaklaşıyor',
-          badge: 'YÜKSEK',
-          tone: StatusTone.warning,
-        ),
+        const SizedBox(height: 14),
+        ...alerts,
       ],
     );
   }
@@ -572,11 +773,15 @@ class _AlertCard extends StatelessWidget {
   }
 }
 
-class _AiRecommendations extends StatelessWidget {
-  const _AiRecommendations();
+class _AiRecommendations extends ConsumerWidget {
+  const _AiRecommendations({this.onNavigate});
+
+  final ValueChanged<String>? onNavigate;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestionsAsync = ref.watch(_aiSuggestionsProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -595,22 +800,78 @@ class _AiRecommendations extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        for (final suggestion in DashboardMockData.aiSuggestions) ...[
-          _AiSuggestionCard(message: suggestion.message),
-          const SizedBox(height: 12),
-        ],
+        suggestionsAsync.when(
+          data: (suggestions) {
+            if (suggestions.isEmpty) {
+              return _AiSuggestionCard(message: 'Şu an aktif öneri bulunmuyor.', onNavigate: onNavigate);
+            }
+            return Column(
+              children: [
+                for (final s in suggestions) ...[
+                  _AiSuggestionCard(message: s, onNavigate: onNavigate),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            );
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, __) => _AiSuggestionCard(
+            message: 'AI önerileri yüklenemedi. Backend bağlantısını kontrol edin.',
+            onNavigate: onNavigate,
+          ),
+        ),
       ],
     );
   }
 }
 
+/// AI Önerileri Provider — backend /chat/suggestions endpoint'inden çeker
+final _aiSuggestionsProvider = FutureProvider<List<String>>((ref) async {
+  final api = ref.watch(apiServiceProvider);
+  final result = await api.getAiSuggestions();
+  final suggestions = result['suggestions'] as List<dynamic>? ?? [];
+  return suggestions
+      .map((s) => (s as Map<String, dynamic>)['mesaj'] as String? ?? '')
+      .where((s) => s.isNotEmpty)
+      .toList();
+});
+
 class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard({required this.message});
+  const _AiSuggestionCard({required this.message, this.onNavigate});
 
   final String message;
+  final ValueChanged<String>? onNavigate;
+
+  /// Öneri metninin içeriğine göre ilgili modülün route'unu ve buton label'ını belirle
+  (String route, String label, IconData icon) _detectTarget() {
+    final lower = message.toLowerCase();
+    if (lower.contains('stok') || lower.contains('ürün') || lower.contains('tedarik')) {
+      return (AppRoutes.stock, 'Stok Yönetimine Git', Icons.inventory_2_outlined);
+    }
+    if (lower.contains('nakit') || lower.contains('ödeme') || lower.contains('tahsilat') || lower.contains('maliyet') || lower.contains('kâr') || lower.contains('kar')) {
+      return (AppRoutes.finance, 'Finans Modülüne Git', Icons.account_balance_wallet_outlined);
+    }
+    if (lower.contains('kdv') || lower.contains('vergi') || lower.contains('beyanname')) {
+      return (AppRoutes.finance, 'KDV Detayına Git', Icons.receipt_long_outlined);
+    }
+    if (lower.contains('puantaj') || lower.contains('çalışan') || lower.contains('mesai')) {
+      return (AppRoutes.employees, 'Puantaj Modülüne Git', Icons.groups_2_outlined);
+    }
+    if (lower.contains('belge') || lower.contains('fatura')) {
+      return (AppRoutes.documents, 'Belge İşlemeye Git', Icons.description_outlined);
+    }
+    return (AppRoutes.chat, 'AI\'a Detay Sor', Icons.smart_toy_outlined);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final (route, label, icon) = _detectTarget();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -641,16 +902,15 @@ class _AiSuggestionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () {},
+                  onPressed: () => onNavigate?.call(route),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: const Size(0, 32),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     foregroundColor: _DashboardColors.secondary,
                   ),
-                  label: const Text('Uygula'),
-                  icon: const Icon(Icons.chevron_right, size: 18),
-                  iconAlignment: IconAlignment.end,
+                  label: Text(label),
+                  icon: Icon(icon, size: 18),
                 ),
               ],
             ),

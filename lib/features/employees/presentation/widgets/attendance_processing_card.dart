@@ -10,6 +10,12 @@ class AttendanceProcessingCard extends StatelessWidget {
     required this.onApprove,
     required this.onManualEdit,
     required this.onReanalyze,
+    this.onPickFile,
+    this.employeeCount = 0,
+    this.totalWorkDays = 0,
+    this.totalOvertime = 0,
+    this.totalLeaveDays = 0,
+    this.isLiveData = false,
     super.key,
   });
 
@@ -17,15 +23,32 @@ class AttendanceProcessingCard extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onManualEdit;
   final VoidCallback onReanalyze;
+  final VoidCallback? onPickFile;
+  final int employeeCount;
+  final int totalWorkDays;
+  final int totalOvertime;
+  final int totalLeaveDays;
+  final bool isLiveData;
 
   @override
   Widget build(BuildContext context) {
+    final description = employeeCount > 0
+        ? 'Gemini Vision, puantaj tablosundan $employeeCount çalışan, '
+          '$totalWorkDays toplam çalışma günü, $totalOvertime saat mesai '
+          've $totalLeaveDays izin günü çıkardı.'
+        : 'Puantaj belgesi henüz işlenmedi. Belge yükleyerek AI analizi başlatabilirsiniz.';
+
+    final confidence = employeeCount > 0 ? 0.88 : 0.0;
+    final confidenceLabel = employeeCount > 0
+        ? '%${(confidence * 100).round()} güven ile puantaj alanları eşleştirildi'
+        : 'Henüz analiz yapılmadı';
+
     return SectionCard(
       title: 'AI Puantaj Okuma',
       subtitle: 'Puantaj belgesinden çalışma günü, mesai ve izin çıkarımı',
-      trailing: const StatusBadge(
-        label: 'Kontrol bekliyor',
-        tone: StatusTone.warning,
+      trailing: StatusBadge(
+        label: employeeCount > 0 ? 'Kontrol bekliyor' : 'Belge bekleniyor',
+        tone: employeeCount > 0 ? StatusTone.warning : StatusTone.neutral,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,9 +82,9 @@ class AttendanceProcessingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Seçili mock dosya',
-                        style: TextStyle(
+                      Text(
+                        isLiveData ? 'API verisi' : 'Puantaj belgesi',
+                        style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 12,
                         ),
@@ -72,9 +95,9 @@ class AttendanceProcessingCard extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Gemini Vision, puantaj tablosundan 5 çalışan, 110 toplam çalışma günü, 30 saat mesai ve 6 izin günü çıkardı.',
-                        style: TextStyle(height: 1.45),
+                      Text(
+                        description,
+                        style: const TextStyle(height: 1.45),
                       ),
                     ],
                   ),
@@ -89,22 +112,28 @@ class AttendanceProcessingCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: 0.88,
+            value: confidence,
             minHeight: 10,
             borderRadius: BorderRadius.circular(999),
             color: AppColors.primary,
             backgroundColor: const Color(0xFFE5E7EB),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '%88 güven ile puantaj alanları eşleştirildi',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          Text(
+            confidenceLabel,
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
+              if (onPickFile != null)
+                OutlinedButton.icon(
+                  onPressed: onPickFile,
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: const Text('Belge Yükle'),
+                ),
               FilledButton.icon(
                 onPressed: onApprove,
                 icon: const Icon(Icons.check_circle_outline),

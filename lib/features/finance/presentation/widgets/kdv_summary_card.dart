@@ -4,9 +4,10 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../finance_mock_data.dart';
 
 class KdvSummaryCard extends StatelessWidget {
-  const KdvSummaryCard({required this.summary, super.key});
+  const KdvSummaryCard({required this.summary, this.onDetails, super.key});
 
   final KdvSummaryMock summary;
+  final VoidCallback? onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +63,7 @@ class KdvSummaryCard extends StatelessWidget {
                       ),
                     ),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: onDetails ?? () {},
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF002045),
                         foregroundColor: Colors.white,

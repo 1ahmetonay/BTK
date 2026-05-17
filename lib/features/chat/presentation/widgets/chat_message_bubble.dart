@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/routing/app_routes.dart';
 import '../chat_mock_data.dart';
 import 'tool_chips.dart';
 
@@ -64,12 +65,12 @@ class ChatMessageBubble extends StatelessWidget {
                     ),
                     if (!isUser && message.tools.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      const _RecommendationCard(),
-                      const SizedBox(height: 18),
                       const Divider(color: Color(0xFFC4C6CF)),
                       const SizedBox(height: 8),
-                      _AnalysisSteps(steps: message.steps),
-                      const SizedBox(height: 18),
+                      if (message.steps.isNotEmpty) ...[
+                        _AnalysisSteps(steps: message.steps),
+                        const SizedBox(height: 18),
+                      ],
                       const Text(
                         'Kullanılan Araçlar',
                         style: TextStyle(
@@ -80,23 +81,10 @@ class ChatMessageBubble extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       ToolChips(tools: message.tools),
-                      const SizedBox(height: 18),
-                      const _ResultSummary(),
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.bolt, size: 18),
-                          label: const Text('Uygula'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF002045),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
+                        child: _GoToModuleButton(tools: message.tools),
                       ),
                     ],
                   ],
@@ -123,49 +111,6 @@ class ChatMessageBubble extends StatelessWidget {
     return message.tools.isEmpty
         ? 'AI ASİSTAN • ŞİMDİ'
         : 'AI ASİSTAN • 1 DK ÖNCE';
-  }
-}
-
-class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFE6F7EC),
-        border: Border(left: BorderSide(color: Color(0xFF2C694E), width: 4)),
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(8),
-          bottomRight: Radius.circular(8),
-        ),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '💡 Önerim:',
-            style: TextStyle(
-              color: Color(0xFF0E5138),
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Aksoy Tedarik ödemesini 10 gün ertelemek ve toplam 38.800 TL gecikmiş tahsilat için hatırlatma göndermek.',
-            style: TextStyle(
-              color: Color(0xFF191C1D),
-              fontSize: 14,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -222,116 +167,59 @@ class _AnalysisSteps extends StatelessWidget {
   }
 }
 
-class _ResultSummary extends StatelessWidget {
-  const _ResultSummary();
+/// Kullanılan araçlara göre ilgili modüle yönlendiren buton
+class _GoToModuleButton extends StatelessWidget {
+  const _GoToModuleButton({required this.tools});
+
+  final List<ToolUsageMock> tools;
+
+  (String route, String label, IconData icon) _detectModule() {
+    final allTools = tools.map((t) => t.name.toLowerCase()).join(' ');
+
+    if (allTools.contains('stock') || allTools.contains('supplier') || allTools.contains('product')) {
+      return (AppRoutes.stock, 'Stok Modülüne Git', Icons.inventory_2_outlined);
+    }
+    if (allTools.contains('cash') || allTools.contains('overdue') || allTools.contains('finance') || allTools.contains('pl')) {
+      return (AppRoutes.finance, 'Finans Modülüne Git', Icons.account_balance_wallet_outlined);
+    }
+    if (allTools.contains('kdv') || allTools.contains('tax')) {
+      return (AppRoutes.finance, 'KDV Detayına Git', Icons.receipt_long_outlined);
+    }
+    if (allTools.contains('employee') || allTools.contains('attendance') || allTools.contains('salary')) {
+      return (AppRoutes.employees, 'Puantaj Modülüne Git', Icons.groups_2_outlined);
+    }
+    if (allTools.contains('document') || allTools.contains('process')) {
+      return (AppRoutes.documents, 'Belge İşlemeye Git', Icons.description_outlined);
+    }
+    return (AppRoutes.alerts, 'Uyarıları Gör', Icons.notifications_outlined);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Özet Sonuç',
-            style: TextStyle(
-              color: Color(0xFF002045),
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Expanded(
-                child: _SummaryMetric(label: 'Risk', value: 'Orta', pill: true),
-              ),
-              _divider(),
-              const Expanded(
-                child: _SummaryMetric(
-                  label: 'Tahmini Açık',
-                  value: '42.000 TL',
-                  valueColor: Color(0xFFBA1A1A),
-                ),
-              ),
-              _divider(),
-              const Expanded(
-                child: _SummaryMetric(
-                  label: 'Zaman',
-                  value: '14 gün',
-                  valueColor: Color(0xFF002045),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+    final (route, label, icon) = _detectModule();
 
-  static Widget _divider() {
-    return Container(width: 1, height: 42, color: const Color(0xFFC4C6CF));
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.pill = false,
-  });
-
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool pill;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xFF43474E), fontSize: 12),
+    return TextButton.icon(
+      onPressed: () {
+        // Sayfa değiştirmek için en üst navigation'a ulaş
+        // DefaultTabController veya shell scaffold kullanıyorsa, route navigate yap
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        // Snackbar ile yönlendirme bildirimi
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text('$label — ilgili sayfaya gidin.'),
+            duration: const Duration(seconds: 2),
+          ));
+      },
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF002045),
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
-        const SizedBox(height: 6),
-        if (pill)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF2D7),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFE9B963)),
-            ),
-            child: const Text(
-              'Orta',
-              style: TextStyle(
-                color: Color(0xFF633F0F),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          )
-        else
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: valueColor ?? const Color(0xFF191C1D),
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

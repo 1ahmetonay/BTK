@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/api_service.dart';
 import '../../../shared/widgets/status_badge.dart';
 import 'stock_mock_data.dart';
 import 'widgets/ai_stock_suggestions_card.dart';
@@ -10,31 +12,306 @@ import 'widgets/stock_insights_card.dart';
 import 'widgets/stock_movements_card.dart';
 import 'widgets/supplier_comparison_card.dart';
 
-class StockPage extends StatefulWidget {
+class StockPage extends ConsumerStatefulWidget {
   const StockPage({super.key});
 
   @override
-  State<StockPage> createState() => _StockPageState();
+  ConsumerState<StockPage> createState() => _StockPageState();
 }
 
-class _StockPageState extends State<StockPage> {
+class _StockPageState extends ConsumerState<StockPage> {
   String _selectedFilter = 'Tümü';
+
+  List<StockSummaryMock> _summaries = [];
+  List<ProductStockMock> _criticalProducts = [];
+  List<ProductStockMock> _allProducts = [];
+  List<StockMovementMock> _movements = [];
+  List<String> _aiSuggestions = [];
+  String _supplierProduct = '';
+  List<SupplierComparisonMock> _suppliers = [];
+  String _supplierInsight = '';
+  List<StockInsightMock> _insights = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStockData();
+  }
+
+  Future<void> _fetchStockData() async {
+    try {
+      // Paralel API çağrıları
+      final results = await Future.wait([
+        ApiService.instance.getStockOverview(),
+        ApiService.instance.getCriticalStock(),
+        ApiService.instance.getStockMovements(limit: 5),
+        ApiService.instance.getAbcAnalysis(),
+      ]);
+
+      if (!mounted) return;
+
+      final overview = results[0] as Map<String, dynamic>;
+      final criticals = results[1] as List<dynamic>;
+      final movements = results[2] as List<dynamic>;
+      final abc = results[3] as Map<String, dynamic>;
+
+      // ─── Summary strip ───
+      final toplamSku = overview['toplam_sku'] ?? 0;
+      final kritikSayi = overview['kritik_stok_sayisi'] ?? 0;
+      final stokDegeri = (overview['stok_degeri'] ?? 0.0) as num;
+      final devirHizi = overview['ortalama_devir_hizi'] ?? '—';
+
+      final liveSummaries = [
+        StockSummaryMock(
+          title: 'Toplam SKU',
+          value: '$toplamSku',
+          description: 'Aktif takip edilen ürün',
+          trend: 'Canlı veri',
+          trendTone: StatusTone.info,
+          icon: Icons.category_outlined,
+          accentColor: AppColors.primary,
+        ),
+        StockSummaryMock(
+          title: 'Kritik Stok',
+          value: '$kritikSayi',
+          description: 'Acil tedarik gerektiren',
+          trend: kritikSayi > 3 ? 'Acil!' : 'Takip et',
+          trendTone: kritikSayi > 0 ? StatusTone.warning : StatusTone.success,
+          icon: Icons.warning_amber_outlined,
+          accentColor: AppColors.rose,
+        ),
+        StockSummaryMock(
+          title: 'Stok Değeri',
+          value: '${_formatTl(stokDegeri.toDouble())} TL',
+          description: 'Tahmini mevcut stok maliyeti',
+          trend: 'Güncel',
+          trendTone: StatusTone.success,
+          icon: Icons.warehouse_outlined,
+          accentColor: AppColors.teal,
+        ),
+        StockSummaryMock(
+          title: 'Ortalama Devir Hızı',
+          value: '$devirHizi',
+          description: 'Ortalama stokta kalma süresi',
+          trend: 'Hesaplandı',
+          trendTone: StatusTone.success,
+          icon: Icons.sync_alt_outlined,
+          accentColor: AppColors.emerald,
+        ),
+      ];
+
+      // ─── Tüm ürünleri map'le (overview.urunler) ───
+      final urunler = overview['urunler'] as List<dynamic>? ?? [];
+      final liveAllProducts = urunler.map<ProductStockMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        final mevcut = (m['mevcut_stok'] ?? 0) as num;
+        final minimum = (m['min_stok'] ?? 0) as num;
+        final durum = m['durum'] as String? ?? 'Normal';
+        final durumTon = m['durum_ton'] as String? ?? 'success';
+        return ProductStockMock(
+          sku: m['sku'] as String? ?? '—',
+          productName: m['isim'] as String? ?? '—',
+          category: m['kategori'] as String? ?? '—',
+          currentStock: '$mevcut',
+          minimumStock: '$minimum',
+          lastPurchaseCost: '${m['son_alis_maliyeti'] ?? '—'} TL',
+          statusLabel: durum,
+          statusTone: durumTon == 'danger'
+              ? StatusTone.danger
+              : durumTon == 'warning'
+                  ? StatusTone.warning
+                  : StatusTone.success,
+          daysRemaining: '${m['kalan_gun'] ?? '?'}',
+        );
+      }).toList();
+
+      // ─── Kritik ürünleri map'le ───
+      final liveCriticals = criticals.map<ProductStockMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        final mevcut = (m['mevcut_stok'] ?? 0) as num;
+        final minimum = (m['min_stok'] ?? 0) as num;
+        return ProductStockMock(
+          sku: m['sku'] as String? ?? '—',
+          productName: m['isim'] as String? ?? '—',
+          category: m['kategori'] as String? ?? '—',
+          currentStock: '$mevcut',
+          minimumStock: '$minimum',
+          lastPurchaseCost: '${m['son_alis_maliyeti'] ?? '—'} TL',
+          statusLabel: 'Kritik',
+          statusTone: StatusTone.danger,
+          daysRemaining: '${m['kalan_gun'] ?? '?'}',
+        );
+      }).toList();
+
+      // ─── Hareketleri map'le ───
+      final liveMovements = movements.map<StockMovementMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        final miktar = (m['miktar'] ?? 0) as num;
+        return StockMovementMock(
+          title: (m['tip'] ?? m['hareket_tipi']) == 'satin_alma'
+              ? 'Satın alma faturası'
+              : 'Satış faturası',
+          productName: (m['urun_adi'] ?? m['urun_isim']) as String? ?? '—',
+          quantityChange: '${miktar > 0 ? '+' : ''}$miktar adet',
+          timestamp: m['tarih'] as String? ?? '—',
+          tone: miktar > 0 ? StatusTone.success : StatusTone.danger,
+        );
+      }).toList();
+
+      // ─── AI önerileri (kritik ürünlerden dinamik üretim) ───
+      final liveSuggestions = <String>[];
+      for (final c in liveCriticals.take(3)) {
+        liveSuggestions.add(
+          '${c.productName} stok seviyesi ${c.currentStock} ile minimum (${c.minimumStock}) altında. '
+          '${c.daysRemaining} içinde bitebilir, acil tedarik önerilir.',
+        );
+      }
+      if (liveSuggestions.isEmpty && liveAllProducts.isNotEmpty) {
+        liveSuggestions.add('Tüm ürün stokları normal seviyelerde. Kritik ürün bulunmuyor.');
+      }
+
+      // ─── ABC analizi → StockInsights ───
+      final aGrubu = abc['a_grubu'] as Map<String, dynamic>? ?? {};
+      final bGrubu = abc['b_grubu'] as Map<String, dynamic>? ?? {};
+      final cGrubu = abc['c_grubu'] as Map<String, dynamic>? ?? {};
+      final aCount = aGrubu['sayi'] as int? ?? 0;
+      final bCount = bGrubu['sayi'] as int? ?? 0;
+      final cCount = cGrubu['sayi'] as int? ?? 0;
+      final toplam = aCount + bCount + cCount;
+      final aPct = toplam > 0 ? aCount / toplam : 0.0;
+      final bPct = toplam > 0 ? bCount / toplam : 0.0;
+
+      final liveInsights = [
+        StockInsightMock(
+          title: 'ABC Analizi',
+          description: 'A grubu yüksek ciro etkisine sahip ürünler',
+          valueLabel: 'A %${(aPct * 100).round()} | B %${(bPct * 100).round()} | C %${((1 - aPct - bPct) * 100).round()}',
+          progress: aPct.clamp(0.05, 0.95),
+          color: AppColors.primary,
+        ),
+        StockInsightMock(
+          title: 'Kritik Oran',
+          description: 'Kritik stok ürünlerinin toplam oranı',
+          valueLabel: toplam > 0 ? '%${(kritikSayi / toplam * 100).round()}' : '%0',
+          progress: toplam > 0 ? (kritikSayi / toplam).clamp(0.05, 0.95) : 0.05,
+          color: AppColors.rose,
+        ),
+        StockInsightMock(
+          title: 'Stok Devir Hızı',
+          description: 'Ürünlerin stokta ortalama kalma süresi',
+          valueLabel: '$devirHizi',
+          progress: 0.18,
+          color: AppColors.amber,
+        ),
+      ];
+
+      // ─── Tedarikçi karşılaştırma (ilk kritik ürün) ───
+      if (liveCriticals.isNotEmpty) {
+        try {
+          final firstSku = liveCriticals.first.sku;
+          final supplierData =
+              await ApiService.instance.getSupplierComparison(firstSku);
+          if (mounted) {
+            final tedarikciler =
+                supplierData['tedarikciler'] as List<dynamic>? ?? [];
+            if (tedarikciler.isNotEmpty) {
+              final liveSuppliers =
+                  tedarikciler.map<SupplierComparisonMock>((raw) {
+                final s = raw as Map<String, dynamic>;
+                return SupplierComparisonMock(
+                  supplierName: s['tedarikci_adi'] as String? ?? '—',
+                  price: '${s['birim_fiyat'] ?? '—'} TL',
+                  leadTime: s['teslim_suresi'] as String? ?? '—',
+                  trustScore: '${s['guvenilirlik'] ?? '—'}',
+                );
+              }).toList();
+
+              // En ucuz ve en hızlıyı bul
+              String cheapest = liveSuppliers.first.supplierName;
+              String fastest = liveSuppliers.first.supplierName;
+              double minPrice = double.tryParse(
+                      liveSuppliers.first.price.replaceAll(' TL', '')) ??
+                  999999;
+              for (final s in liveSuppliers) {
+                final p =
+                    double.tryParse(s.price.replaceAll(' TL', '')) ?? 999999;
+                if (p < minPrice) {
+                  minPrice = p;
+                  cheapest = s.supplierName;
+                }
+                // leadTime "3 gün" gibi, sayıyı parse et
+                final lt = int.tryParse(
+                        s.leadTime.replaceAll(RegExp(r'[^0-9]'), '')) ??
+                    999;
+                final ft = int.tryParse(
+                        fastest == s.supplierName
+                            ? '999'
+                            : liveSuppliers
+                                .firstWhere(
+                                    (x) => x.supplierName == fastest)
+                                .leadTime
+                                .replaceAll(RegExp(r'[^0-9]'), '')) ??
+                    999;
+                if (lt < ft) fastest = s.supplierName;
+              }
+
+              setState(() {
+                _supplierProduct =
+                    supplierData['urun'] as String? ?? _supplierProduct;
+                _suppliers = liveSuppliers;
+                _supplierInsight =
+                    'En düşük fiyat $cheapest, en hızlı teslimat $fastest. '
+                    'Acil stok için hız, maliyet optimizasyonu için fiyat odaklı seçim önerilir.';
+              });
+            }
+          }
+        } catch (_) {
+          // tedarikçi verisi alınamazsa boş kalır
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _summaries = liveSummaries;
+        _allProducts = liveAllProducts;
+        _criticalProducts = liveCriticals;
+        _movements = liveMovements;
+        _aiSuggestions = liveSuggestions;
+        _insights = liveInsights;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _formatTl(double val) {
+    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
+    if (val >= 1000) return '${(val / 1000).toStringAsFixed(0)}.000';
+    return val.toStringAsFixed(0);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _StockIntroCard(),
         const SizedBox(height: 16),
-        const _StockSummaryStrip(summaries: StockMockData.summaries),
+        _StockSummaryStrip(summaries: _summaries),
         const SizedBox(height: 16),
         CriticalStockCard(
-          products: StockMockData.criticalProducts.take(3).toList(),
+          products: _criticalProducts.take(3).toList(),
           onRecommend: _showRecommendMessage,
         ),
         const SizedBox(height: 16),
-        const AiStockSuggestionsCard(suggestions: StockMockData.aiSuggestions),
+        AiStockSuggestionsCard(suggestions: _aiSuggestions),
         const SizedBox(height: 16),
         _StockSearchAndFilters(
           selectedFilter: _selectedFilter,
@@ -43,31 +320,58 @@ class _StockPageState extends State<StockPage> {
         const SizedBox(height: 16),
         const _StockSectionTitle('Ürün Stok Durumu'),
         const SizedBox(height: 8),
-        const ProductStockTableCard(products: StockMockData.allProducts),
+        ProductStockTableCard(products: _allProducts),
         const SizedBox(height: 16),
-        const StockMovementsCard(movements: StockMockData.movements),
+        StockMovementsCard(movements: _movements),
         const SizedBox(height: 16),
-        const SupplierComparisonCard(
-          productName: StockMockData.selectedSupplierProduct,
-          suppliers: StockMockData.suppliers,
-          aiInsight: StockMockData.supplierInsight,
+        SupplierComparisonCard(
+          productName: _supplierProduct,
+          suppliers: _suppliers,
+          aiInsight: _supplierInsight,
         ),
         const SizedBox(height: 16),
-        const StockInsightsCard(insights: StockMockData.insights),
+        StockInsightsCard(insights: _insights),
       ],
     );
   }
 
-  void _showRecommendMessage(String productName) {
+  Future<void> _showRecommendMessage(String productName) async {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$productName için tedarik önerisi hazırlanıyor.'),
+          content: Text('$productName için tedarik önerisi hazırlanıyor...'),
+          duration: const Duration(seconds: 1),
         ),
       );
+    try {
+      final result = await ApiService.instance.chat(
+        '$productName için tedarik önerisi ver. Mevcut stok durumunu, en uygun tedarikçiyi ve sipariş miktarını öner.',
+      );
+      if (!mounted) return;
+      final response = result['response'] as String? ?? 'Öneri alınamadı.';
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('$productName — Tedarik Önerisi'),
+          content: SingleChildScrollView(
+            child: Text(response, style: const TextStyle(fontSize: 14, height: 1.5)),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('Tedarik önerisi alınamadı: $e')));
+      }
+    }
   }
 }
+
 
 class _StockSectionTitle extends StatelessWidget {
   const _StockSectionTitle(this.title);

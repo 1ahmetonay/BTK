@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../finance_mock_data.dart';
 
 class AiFinanceSuggestionsCard extends StatelessWidget {
-  const AiFinanceSuggestionsCard({required this.insights, super.key});
+  const AiFinanceSuggestionsCard({required this.insights, this.onApply, super.key});
 
   final List<FinanceInsightMock> insights;
+  final ValueChanged<String>? onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,7 @@ class AiFinanceSuggestionsCard extends StatelessWidget {
             itemCount: insights.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              return _AiSuggestionCard(insight: insights[index], index: index);
+              return _AiSuggestionCard(insight: insights[index], index: index, onApply: onApply);
             },
           ),
         ),
@@ -46,10 +47,11 @@ class AiFinanceSuggestionsCard extends StatelessWidget {
 }
 
 class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard({required this.insight, required this.index});
+  const _AiSuggestionCard({required this.insight, required this.index, this.onApply});
 
   final FinanceInsightMock insight;
   final int index;
+  final ValueChanged<String>? onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +98,7 @@ class _AiSuggestionCard extends StatelessWidget {
             width: double.infinity,
             height: 38,
             child: FilledButton(
-              onPressed: () {},
+              onPressed: () => onApply?.call(_message),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2C694E),
                 foregroundColor: Colors.white,

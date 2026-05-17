@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/routing/app_routes.dart';
+import '../../core/services/api_service.dart';
 
 class AppSidebar extends StatelessWidget {
   const AppSidebar({
@@ -192,33 +193,83 @@ class _SidebarItemState extends State<_SidebarItem> {
   }
 }
 
-class _PlanSummary extends StatelessWidget {
+class _PlanSummary extends StatefulWidget {
   const _PlanSummary();
 
   @override
+  State<_PlanSummary> createState() => _PlanSummaryState();
+}
+
+class _PlanSummaryState extends State<_PlanSummary> {
+  bool _connected = false;
+  bool _checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnection();
+  }
+
+  Future<void> _checkConnection() async {
+    try {
+      final ok =
+          await ApiService.instance.isBackendAvailable();
+      if (mounted) setState(() { _connected = ok; _checking = false; });
+    } catch (_) {
+      if (mounted) setState(() { _connected = false; _checking = false; });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final title = _checking
+        ? 'Bağlantı kontrol ediliyor…'
+        : _connected
+            ? 'API Bağlı'
+            : 'Demo Veri Modu';
+    final subtitle = _checking
+        ? 'Backend sunucusu aranıyor.'
+        : _connected
+            ? 'Tüm veriler backend API üzerinden canlı çekiliyor.'
+            : 'Backend kapalı. Ekranlar mock veriyle çalışır.';
+    final borderColor = _connected
+        ? const Color(0xFF2C694E)
+        : const Color(0xFF344054);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF182230),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF344054)),
+        border: Border.all(color: borderColor),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Demo Veri Modu',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Icon(
+                _connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                color: _connected ? const Color(0xFF95D4B3) : const Color(0xFF98A2B3),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
-            'API bağlantısı kapalı. Tüm ekranlar mock veriyle çalışır.',
-            style: TextStyle(
+            subtitle,
+            style: const TextStyle(
               color: Color(0xFF98A2B3),
               fontSize: 12,
               height: 1.35,

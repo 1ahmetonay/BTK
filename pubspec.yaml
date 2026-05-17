@@ -34,6 +34,19 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  
+  # HTTP Client - Backend API bağlantısı
+  dio: ^5.7.0
+  
+  # State Management
+  flutter_riverpod: ^2.6.1
+  
+  # Dosya/Belge yükleme
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+
+  # Grafik ve chart bileşenleri
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:

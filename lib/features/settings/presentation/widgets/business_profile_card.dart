@@ -6,11 +6,13 @@ class BusinessProfileCard extends StatelessWidget {
   const BusinessProfileCard({
     required this.profile,
     required this.onSave,
+    this.onFieldChanged,
     super.key,
   });
 
   final BusinessProfileMock profile;
   final VoidCallback onSave;
+  final void Function(String field, String value)? onFieldChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,11 @@ class BusinessProfileCard extends StatelessWidget {
             title: 'İşletme Profili',
           ),
           const SizedBox(height: 16),
-          _ProfileField(label: 'İşletme adı', value: profile.businessName),
+          _ProfileField(
+            label: 'İşletme adı',
+            value: profile.businessName,
+            onChanged: (v) => onFieldChanged?.call('businessName', v),
+          ),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -31,11 +37,16 @@ class BusinessProfileCard extends StatelessWidget {
                 child: _ProfileField(
                   label: 'Vergi No',
                   value: profile.taxNumber,
+                  onChanged: (v) => onFieldChanged?.call('taxNumber', v),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _ProfileField(label: 'Sektör', value: profile.industry),
+                child: _ProfileField(
+                  label: 'Sektör',
+                  value: profile.industry,
+                  onChanged: (v) => onFieldChanged?.call('industry', v),
+                ),
               ),
             ],
           ),
@@ -43,13 +54,18 @@ class BusinessProfileCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _ProfileField(label: 'Şehir', value: profile.city),
+                child: _ProfileField(
+                  label: 'Şehir',
+                  value: profile.city,
+                  onChanged: (v) => onFieldChanged?.call('city', v),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _ProfileField(
                   label: 'Para birimi',
                   value: profile.currency,
+                  onChanged: (v) => onFieldChanged?.call('currency', v),
                 ),
               ),
             ],
@@ -69,24 +85,27 @@ class BusinessProfileCard extends StatelessWidget {
             children: [
               for (final rate in const ['%1', '%10', '%20']) ...[
                 Expanded(
-                  child: Container(
-                    height: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: rate == profile.defaultVatRate
-                          ? const Color(0xFF002045)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFC4C6CF)),
-                    ),
-                    child: Text(
-                      rate,
-                      style: TextStyle(
+                  child: GestureDetector(
+                    onTap: () => onFieldChanged?.call('defaultVatRate', rate),
+                    child: Container(
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
                         color: rate == profile.defaultVatRate
-                            ? Colors.white
-                            : const Color(0xFF191C1D),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                            ? const Color(0xFF002045)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFC4C6CF)),
+                      ),
+                      child: Text(
+                        rate,
+                        style: TextStyle(
+                          color: rate == profile.defaultVatRate
+                              ? Colors.white
+                              : const Color(0xFF191C1D),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -122,16 +141,17 @@ class BusinessProfileCard extends StatelessWidget {
 }
 
 class _ProfileField extends StatelessWidget {
-  const _ProfileField({required this.label, required this.value});
+  const _ProfileField({required this.label, required this.value, this.onChanged});
 
   final String label;
   final String value;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       initialValue: value,
-      readOnly: true,
+      onChanged: onChanged,
       style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         labelText: label,

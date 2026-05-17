@@ -5,9 +5,10 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../finance_mock_data.dart';
 
 class FinanceMovementsCard extends StatelessWidget {
-  const FinanceMovementsCard({required this.movements, super.key});
+  const FinanceMovementsCard({required this.movements, this.onShowAll, super.key});
 
   final List<FinanceMovementMock> movements;
+  final VoidCallback? onShowAll;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,7 @@ class FinanceMovementsCard extends StatelessWidget {
                 _MovementRow(movement: movements[index], index: index),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: onShowAll ?? () {},
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF002045),
               minimumSize: const Size.fromHeight(46),

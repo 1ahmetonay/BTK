@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../shared/widgets/empty_state.dart';
 import '../stock_mock_data.dart';
 
 class SupplierComparisonCard extends StatelessWidget {
@@ -16,6 +17,23 @@ class SupplierComparisonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (suppliers.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(productName.isNotEmpty
+              ? 'Tedarikçi Karşılaştırması: $productName'
+              : 'Tedarikçi Karşılaştırması'),
+          const SizedBox(height: 8),
+          const EmptyState(
+            icon: Icons.compare_arrows_outlined,
+            title: 'Tedarikçi verisi bulunamadı',
+            description: 'Kritik stok ürünü bulunduğunda tedarikçi karşılaştırması burada görünecektir.',
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -25,7 +43,7 @@ class SupplierComparisonCard extends StatelessWidget {
           _SupplierTile(supplier: suppliers[index], cheapest: index == 1),
           const SizedBox(height: 8),
         ],
-        _SupplierAiComment(text: aiInsight),
+        if (aiInsight.isNotEmpty) _SupplierAiComment(text: aiInsight),
       ],
     );
   }

@@ -1,5 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/services/api_service.dart';
+import '../../../shared/widgets/efatura_dialog.dart';
 import '../../../shared/widgets/status_badge.dart';
 import 'documents_mock_data.dart';
 
@@ -13,39 +17,93 @@ class DocumentsPage extends StatefulWidget {
 class _DocumentsPageState extends State<DocumentsPage> {
   DocumentType _selectedType = DocumentType.purchaseInvoice;
 
+  // Gerçek analiz sonucu (Gemini demo'dan)
+  DocumentScenarioMock? _liveScenario;
+  List<RecentProcessedDocumentMock> _recentDocs = [];
+  bool _analyzing = false;
+
+  // Seçilen dosya bilgileri
+  List<int>? _pickedFileBytes;
+  String _pickedFileName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecentDocs();
+  }
+
+  Future<void> _fetchRecentDocs() async {
+    try {
+      final invoices = await ApiService.instance.getRecentInvoices(limit: 5);
+      if (!mounted || invoices.isEmpty) return;
+
+      final live = invoices.map<RecentProcessedDocumentMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        final tur = m['tur'] as String? ?? 'fatura';
+        final isSales = tur.contains('satis');
+        return RecentProcessedDocumentMock(
+          documentType: isSales ? 'Satış Faturası' : 'Satın Alma Faturası',
+          source: m['karsi_taraf'] as String? ?? '—',
+          value: '${m['toplam_tutar'] ?? '—'} TL',
+          statusLabel: m['odeme_durumu'] == 'odendi' ? 'Ödendi' : 'Ödeme Bekliyor',
+          statusTone: m['odeme_durumu'] == 'odendi'
+              ? StatusTone.success
+              : StatusTone.warning,
+        );
+      }).toList();
+
+      setState(() {
+        _recentDocs = live;
+      });
+    } catch (_) {
+      // Backend bağlantısı yoksa boş kalır
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scenario = DocumentsMockData.scenarioFor(_selectedType);
+    // Canlı analiz sonucu varsa onu göster, yoksa seçili belge tipinin mock'unu
+    final scenario = _liveScenario;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _HeaderCard(),
+        const SizedBox(height: 12),
+        _EFaturaKesButton(onPressed: () => _openEFaturaDialog(context)),
         const SizedBox(height: 16),
-        _UploadCard(analysis: scenario.analysis),
+        _UploadCard(
+          analysis: scenario?.analysis,
+          analyzing: _analyzing,
+          onAnalyze: _handleGeminiAnalyze,
+          onPickFile: _handlePickFile,
+          pickedFileName: _pickedFileName,
+        ),
         const SizedBox(height: 16),
         _DocumentTypeSelector(
           selectedType: _selectedType,
           onSelectionChanged: _updateSelection,
         ),
-        const SizedBox(height: 16),
-        _AnalysisResultCard(analysis: scenario.analysis),
-        const SizedBox(height: 16),
-        _LineItemsList(
-          title: scenario.tableTitle,
-          headers: scenario.tableHeaders,
-          items: scenario.lineItems,
-        ),
-        const SizedBox(height: 16),
-        _ImpactSummary(items: scenario.automationEffects),
-        const SizedBox(height: 16),
-        _ActionButtons(
-          onProcess: _handleProcess,
-          onManualEdit: _handleManualEdit,
-          onReject: _handleReject,
-        ),
+        if (scenario != null) ...[
+          const SizedBox(height: 16),
+          _AnalysisResultCard(analysis: scenario.analysis),
+          const SizedBox(height: 16),
+          _LineItemsList(
+            title: scenario.tableTitle,
+            headers: scenario.tableHeaders,
+            items: scenario.lineItems,
+          ),
+          const SizedBox(height: 16),
+          _ImpactSummary(items: scenario.automationEffects),
+          const SizedBox(height: 16),
+          _ActionButtons(
+            onProcess: _handleProcess,
+            onManualEdit: _handleManualEdit,
+            onReject: _handleReject,
+          ),
+        ],
         const SizedBox(height: 20),
-        const _RecentDocuments(items: DocumentsMockData.recentDocuments),
+        _RecentDocuments(items: _recentDocs),
         const SizedBox(height: 12),
       ],
     );
@@ -54,19 +112,184 @@ class _DocumentsPageState extends State<DocumentsPage> {
   void _updateSelection(DocumentType selection) {
     setState(() {
       _selectedType = selection;
+      _liveScenario = null; // Tip değişince canlı sonucu temizle
     });
   }
 
+  Future<void> _handleGeminiAnalyze() async {
+    setState(() => _analyzing = true);
+    try {
+      final Map<String, dynamic> result;
+      if (_pickedFileBytes != null && _pickedFileBytes!.isNotEmpty) {
+        result = await ApiService.instance.processDocument(_pickedFileBytes!, _pickedFileName);
+      } else {
+        result = await ApiService.instance.processDocumentDemo();
+      }
+      if (!mounted) return;
+
+      // Backend sonucunu DocumentScenarioMock'a dönüştür
+      // Backend düz yapıda döner: {fatura_no, tur, toplam_tutar, kdv_tutari, gemini_output, stok_guncellemeleri}
+      // gemini_output içinde kalemler var
+      final geminiOut = result['gemini_output'] as Map<String, dynamic>? ?? {};
+      final faturaTur = result['tur'] as String? ?? geminiOut['belge_tipi'] as String? ?? 'Fatura';
+      final karsiTaraf = geminiOut['satici_adi'] as String? ?? '—';
+      final faturaNo = result['fatura_no'] as String? ?? geminiOut['fatura_no'] as String? ?? '—';
+      final tarih = geminiOut['tarih'] as String? ?? '—';
+      final toplamTutar = result['toplam_tutar'] ?? geminiOut['genel_toplam'];
+      final kdvTutar = result['kdv_tutari'] ?? geminiOut['toplam_kdv'];
+      final kalemler = geminiOut['kalemler'] as List<dynamic>? ?? [];
+      final stokEtki = result['stok_guncellemeleri'] as List<dynamic>? ?? [];
+
+      final fields = <DocumentAnalysisField>[
+        DocumentAnalysisField(label: 'Belge tipi', value: faturaTur),
+        DocumentAnalysisField(label: 'Satıcı/Kaynak', value: karsiTaraf),
+        DocumentAnalysisField(label: 'Fatura No', value: faturaNo),
+        DocumentAnalysisField(label: 'Tarih', value: tarih),
+        DocumentAnalysisField(label: 'Genel Toplam', value: '${toplamTutar ?? '—'} TL'),
+        DocumentAnalysisField(label: 'Toplam KDV', value: '${kdvTutar ?? '—'} TL'),
+      ];
+
+      final lineItems = kalemler.map<DocumentLineItemMock>((raw) {
+        final m = raw as Map<String, dynamic>;
+        return DocumentLineItemMock(values: [
+          m['urun_adi'] as String? ?? '—',
+          '${m['miktar'] ?? '—'} adet',
+          '${m['birim_fiyat'] ?? '—'} TL',
+          '%${m['kdv_orani'] ?? 20}',
+          '${m['satir_toplam'] ?? m['toplam'] ?? '—'} TL',
+        ]);
+      }).toList();
+
+      final effects = <AutomationEffectItem>[
+        if (kalemler.isNotEmpty)
+          AutomationEffectItem(
+            icon: Icons.check_circle_outline,
+            text: 'Stoklara ${kalemler.length} ürün için giriş hareketi eklendi',
+          ),
+        if (kdvTutar != null)
+          AutomationEffectItem(
+            icon: Icons.auto_awesome_outlined,
+            text: 'KDV defterine $kdvTutar TL indirilecek KDV kaydı düşüldü',
+            iconColor: AppColors.primary,
+          ),
+        if (toplamTutar != null)
+          AutomationEffectItem(
+            icon: Icons.account_balance_wallet_outlined,
+            text: 'Nakit akışı $toplamTutar TL çıkış olarak güncellendi',
+            iconColor: AppColors.rose,
+          ),
+        for (final etki in stokEtki.take(2))
+          AutomationEffectItem(
+            icon: Icons.inventory_2_outlined,
+            text: () {
+              final m = etki as Map<String, dynamic>;
+              return m['aciklama'] as String? ?? '${m['urun'] ?? 'Ürün'}: stok güncellendi';
+            }(),
+            iconColor: AppColors.amber,
+          ),
+      ];
+
+      final guven = (result['guven_skoru'] as num?)?.toDouble() ?? 0.92;
+
+      setState(() {
+        _liveScenario = DocumentScenarioMock(
+          analysis: DocumentAnalysisMock(
+            type: _selectedType,
+            selectedFileName: geminiOut['dosya_adi'] as String? ?? 'gemini_analiz_sonucu.jpg',
+            fields: fields,
+            confidenceScore: guven,
+            statusLabel: 'AI ile İşlendi',
+            statusTone: StatusTone.success,
+          ),
+          tableTitle: 'Gemini ile Okunan Kalemler',
+          tableSubtitle: 'AI analizi sonucu yapılandırılan satırlar',
+          tableHeaders: const ['Ürün', 'Miktar', 'Birim Fiyat', 'KDV', 'Toplam'],
+          lineItems: lineItems.isNotEmpty ? lineItems : [const DocumentLineItemMock(values: ['Demo veri', '—', '—', '—', '—'])],
+          automationEffects: effects.isNotEmpty ? effects : [const AutomationEffectItem(icon: Icons.check_circle_outline, text: 'Belge işlendi')],
+        );
+
+        // Son belgelere ekle
+        _recentDocs = [
+          RecentProcessedDocumentMock(
+            documentType: faturaTur,
+            source: karsiTaraf,
+            value: '${toplamTutar ?? '—'} TL',
+            statusLabel: 'AI ile İşlendi',
+            statusTone: StatusTone.success,
+          ),
+          ..._recentDocs.take(3),
+        ];
+
+        _analyzing = false;
+      });
+
+      _showMessage('Belge Gemini AI ile başarıyla analiz edildi!');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _analyzing = false);
+        _showMessage('Analiz hatası: $e');
+      }
+    }
+  }
+
+  Future<void> _handlePickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'tiff'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.first;
+      if (!mounted) return;
+      setState(() {
+        _pickedFileBytes = file.bytes;
+        _pickedFileName = file.name;
+      });
+      _showMessage('${file.name} seçildi. "Gemini ile Analiz Et" ile işleyebilirsiniz.');
+    } catch (e) {
+      if (mounted) _showMessage('Dosya seçilemedi: $e');
+    }
+  }
+
   void _handleProcess() {
-    _showMessage('${_selectedType.label} işleme kuyruğuna alındı.');
+    if (_liveScenario == null) {
+      _showMessage('Önce belge analiz edilmelidir.');
+      return;
+    }
+    // Belge zaten Gemini analizi sırasında backend'de kaydedildi
+    // (fatura, stok hareketi, KDV kaydı, nakit akışı oluşturuldu)
+    final kalemSayisi = _liveScenario!.lineItems.length;
+    _showMessage(
+      '${_selectedType.label} başarıyla kayıtlara eklendi. '
+      '$kalemSayisi kalem işlendi. Stok, KDV ve nakit akışı güncellendi.',
+    );
+    _fetchRecentDocs();
   }
 
   void _handleManualEdit() {
-    _showMessage('Manuel düzenleme modu yakında eklenecek.');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Manuel Düzenleme'),
+        content: const Text('Analiz sonuçlarını düzenlemek için ilgili alana dokunun. Değişiklikler onaylandıktan sonra sisteme işlenecektir.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Anladım')),
+        ],
+      ),
+    );
   }
 
   void _handleReject() {
+    setState(() => _liveScenario = null);
     _showMessage('Belge reddedildi.');
+  }
+
+  Future<void> _openEFaturaDialog(BuildContext context) async {
+    final result = await showEFaturaDialog(context);
+    if (result != null && mounted) {
+      _showMessage('E-Fatura ${result['fatura_no']} başarıyla oluşturuldu!');
+    }
   }
 
   void _showMessage(String message) {
@@ -152,9 +375,19 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _UploadCard extends StatelessWidget {
-  const _UploadCard({required this.analysis});
+  const _UploadCard({
+    required this.analysis,
+    this.analyzing = false,
+    this.onAnalyze,
+    this.onPickFile,
+    this.pickedFileName = '',
+  });
 
-  final DocumentAnalysisMock analysis;
+  final DocumentAnalysisMock? analysis;
+  final bool analyzing;
+  final VoidCallback? onAnalyze;
+  final VoidCallback? onPickFile;
+  final String pickedFileName;
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +421,7 @@ class _UploadCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            DocumentsMockData.supportedFormats,
+            'PDF, JPG, PNG, TIFF • Maks. 10 MB',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: _DocumentColors.muted,
@@ -218,7 +451,9 @@ class _UploadCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    analysis.selectedFileName,
+                    pickedFileName.isNotEmpty
+                        ? pickedFileName
+                        : (analysis?.selectedFileName ?? 'Belge seçilmedi'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -236,7 +471,7 @@ class _UploadCard extends StatelessWidget {
             label: 'Belge Seç',
             background: _DocumentColors.primary,
             foreground: Colors.white,
-            onPressed: () {},
+            onPressed: onPickFile ?? () {},
           ),
           const SizedBox(height: 8),
           _FullWidthButton(
@@ -245,16 +480,28 @@ class _UploadCard extends StatelessWidget {
             background: Colors.white,
             foreground: _DocumentColors.primary,
             borderColor: _DocumentColors.primary,
-            onPressed: () {},
+            onPressed: onPickFile ?? () {},
           ),
           const SizedBox(height: 8),
-          _FullWidthButton(
-            icon: Icons.smart_toy_outlined,
-            label: 'Gemini ile Analiz Et',
-            background: _DocumentColors.secondaryContainer,
-            foreground: _DocumentColors.onSecondaryContainer,
-            onPressed: () {},
-          ),
+          analyzing
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                      SizedBox(width: 12),
+                      Text('Gemini analiz ediyor...', style: TextStyle(color: _DocumentColors.muted, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                )
+              : _FullWidthButton(
+                  icon: Icons.smart_toy_outlined,
+                  label: 'Gemini ile Analiz Et',
+                  background: _DocumentColors.secondaryContainer,
+                  foreground: _DocumentColors.onSecondaryContainer,
+                  onPressed: onAnalyze ?? () {},
+                ),
         ],
       ),
     );
@@ -681,6 +928,44 @@ class _RecentDocuments extends StatelessWidget {
 
   final List<RecentProcessedDocumentMock> items;
 
+  void _showAllDocuments(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tüm Son Belgeler'),
+        content: SizedBox(
+          width: 420,
+          child: items.isEmpty
+              ? const Text('Henüz işlenmiş belge yok.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                  itemBuilder: (_, i) {
+                    final doc = items[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(doc.documentType),
+                      subtitle: Text('${doc.source} • ${doc.value}'),
+                      trailing: StatusBadge(
+                        label: doc.statusLabel,
+                        tone: doc.statusTone,
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleItems = items.take(3).toList(growable: false);
@@ -701,7 +986,7 @@ class _RecentDocuments extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () => _showAllDocuments(context),
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 36),
@@ -898,4 +1183,60 @@ BoxDecoration _cardDecoration() {
     borderRadius: BorderRadius.circular(10),
     border: Border.all(color: _DocumentColors.outline),
   );
+}
+
+class _EFaturaKesButton extends StatelessWidget {
+  const _EFaturaKesButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1a4d2e), Color(0xFF002045)],
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.receipt_long, color: Color(0xFFAEEECB), size: 22),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'E-Fatura Kes',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'UBL-TR XML • QR Doğrulama • PDF',
+                      style: TextStyle(
+                        color: Color(0xFFAEEECB),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

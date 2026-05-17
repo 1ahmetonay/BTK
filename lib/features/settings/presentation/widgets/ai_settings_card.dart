@@ -66,7 +66,6 @@ class AiSettingsCard extends StatelessWidget {
                 label: item.$1,
                 value: values[item.$2] ?? false,
                 onChanged: (value) => onToggle(item.$2, value),
-                disabled: item.$1.startsWith('KDV'),
               ),
               const SizedBox(height: 12),
             ],
@@ -147,36 +146,31 @@ class _SwitchRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
-    this.disabled = false,
   });
 
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: disabled ? 0.48 : 1,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF191C1D)),
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF191C1D)),
           ),
-          Switch(
-            value: disabled ? false : value,
-            onChanged: disabled ? (v) => onChanged(v) : onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: const Color(0xFF2C694E),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFE1E3E4),
-          ),
-        ],
-      ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: Colors.white,
+          activeTrackColor: const Color(0xFF2C694E),
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: const Color(0xFFE1E3E4),
+        ),
+      ],
     );
   }
 }

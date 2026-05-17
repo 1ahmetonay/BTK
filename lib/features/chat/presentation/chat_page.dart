@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/app_providers.dart';
+import '../../../core/services/api_service.dart';
 import 'chat_mock_data.dart';
 import 'widgets/chat_conversation_card.dart';
 
-class ChatPage extends StatefulWidget {
+class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessageMock> _messages = [
@@ -70,8 +73,17 @@ class _ChatPageState extends State<ChatPage> {
           controller: _scrollController,
           inputController: _inputController,
           onSubmit: _sendQuestion,
-          suggestedQuestions: ChatMockData.suggestedQuestions,
+          suggestedQuestions: const [
+            SuggestedQuestionMock(question: 'Nakit akışım nasıl görünüyor?', icon: Icons.account_balance_wallet_outlined),
+            SuggestedQuestionMock(question: 'Kritik stok durumu nedir?', icon: Icons.inventory_2_outlined),
+            SuggestedQuestionMock(question: 'Bu ay KDV borcum ne kadar?', icon: Icons.receipt_long_outlined),
+            SuggestedQuestionMock(question: 'Gecikmiş ödemelerim var mı?', icon: Icons.warning_amber_outlined),
+          ],
           onQuestionSelected: _sendQuestion,
+          onFileAttached: (name) {
+            _showMessage('$name eklendi.');
+          },
+          onFileBytesAttached: (name, bytes) => _handleFileAttached(name, bytes),
         ),
       ],
     );
@@ -98,26 +110,113 @@ class _ChatPageState extends State<ChatPage> {
     });
     _scrollToBottom();
 
-    await Future<void>.delayed(const Duration(milliseconds: 650));
-    if (!mounted) {
-      return;
+    // ─── EK-4 DÜZELTMESİ: Gerçek Backend API Çağrısı ────────────────
+    String responseText;
+    List<ToolUsageMock> tools = [];
+    List<String> steps = [];
+
+    try {
+      // Backend orchestrator'a gönder (ReAct döngüsü)
+      final aiMode = ref.read(aiModeProvider);
+      final result = await ApiService.instance.chat(question, aiMode: aiMode);
+
+      responseText = result['response'] as String? ?? 'Yanıt alınamadı.';
+
+      // Kullanılan araçları parse et
+      final toolsUsed = result['tools_used'] as List<dynamic>? ?? [];
+      tools = toolsUsed
+          .map((t) => ToolUsageMock(t.toString()))
+          .toList();
+
+      // Düşünme adımlarını parse et
+      final thinkingSteps = result['thinking_steps'] as List<dynamic>? ?? [];
+      steps = thinkingSteps
+          .map((s) => (s as Map<String, dynamic>)['detail'] as String? ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } catch (e) {
+      // Backend'e ulaşılamazsa hata mesajı göster
+      responseText = 'Backend bağlantısı kurulamadı. Lütfen backend sunucusunun çalıştığından emin olun.';
+      tools = [];
+      steps = [];
     }
 
-    final response = ChatMockData.responseFor(question);
+    if (!mounted) return;
+
     setState(() {
       _messages.add(
         ChatMessageMock(
           id: 'assistant-${_messageCounter++}',
           role: ChatRole.assistant,
-          message: response.message,
+          message: responseText,
           timestamp: DateTime.now(),
-          tools: response.tools,
-          steps: response.steps,
+          tools: tools,
+          steps: steps,
         ),
       );
       _isTyping = false;
     });
     _scrollToBottom();
+  }
+
+
+  Future<void> _handleFileAttached(String name, List<int>? bytes) async {
+    if (bytes == null || bytes.isEmpty) {
+      _showMessage('$name dosyası okunamadı.');
+      return;
+    }
+    setState(() {
+      _messages.add(ChatMessageMock(
+        id: 'user-file-${_messageCounter++}',
+        role: ChatRole.user,
+        message: '$name dosyası eklendi. Analiz ediliyor...',
+        timestamp: DateTime.now(),
+      ));
+      _isTyping = true;
+    });
+    _scrollToBottom();
+    try {
+      final result = await ApiService.instance.processDocument(bytes, name);
+      if (!mounted) return;
+      final geminiOut = result['gemini_output'] as Map<String, dynamic>? ?? {};
+      final tur = result['tur'] as String? ?? geminiOut['belge_tipi'] as String? ?? 'Belge';
+      final toplam = result['toplam_tutar'] ?? geminiOut['genel_toplam'] ?? '—';
+      final kalemler = geminiOut['kalemler'] as List<dynamic>? ?? [];
+      final response = '$tur analiz edildi.\n'
+          'Toplam: $toplam TL\n'
+          'Kalem sayısı: ${kalemler.length}\n'
+          'Güven: %${((result['guven_skoru'] as num?)?.toDouble() ?? 0.9) * 100 ~/ 1}';
+      setState(() {
+        _messages.add(ChatMessageMock(
+          id: 'assistant-file-${_messageCounter++}',
+          role: ChatRole.assistant,
+          message: response,
+          timestamp: DateTime.now(),
+          tools: const [ToolUsageMock('process_document')],
+          steps: const ['Dosya alındı', 'Gemini Vision ile analiz edildi', 'Sonuç oluşturuldu'],
+        ));
+        _isTyping = false;
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessageMock(
+          id: 'assistant-err-${_messageCounter++}',
+          role: ChatRole.assistant,
+          message: 'Dosya analiz edilemedi: $e',
+          timestamp: DateTime.now(),
+        ));
+        _isTyping = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _scrollToBottom() {
