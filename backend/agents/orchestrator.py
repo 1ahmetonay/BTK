@@ -58,16 +58,23 @@ class OrchestratorAgent:
             )
         return self._model
 
-    async def handle_query(self, db: AsyncSession, query: str) -> dict:
+    async def handle_query(self, db: AsyncSession, query: str, conversation_id: str | None = None) -> dict:
         """Kullanıcı sorusunu ReAct pattern ile işler (çok adımlı döngü)."""
+        from services.conversation_service import conversation_store
+
+        # Conversation tracking
+        conv_id, history = conversation_store.get_or_create(conversation_id)
+
         if not self.api_key or not self.model:
-            return self._mock_response(query)
+            mock = self._mock_response(query)
+            mock["conversation_id"] = conv_id
+            return mock
 
         thinking_steps = []
         tools_used = []
 
         try:
-            chat = self.model.start_chat()
+            chat = self.model.start_chat(history=history)
             response = chat.send_message(query)
 
             # ─── ReAct Döngüsü ─────────────────────────────────────────
@@ -114,6 +121,9 @@ class OrchestratorAgent:
             # Son yanıtı al
             final_text = response.text if response.text else "Analiz tamamlandı."
 
+            # Conversation history'yi güncelle
+            conversation_store.append_turn(conv_id, query, final_text)
+
             thinking_steps.append({
                 "step": "Sentez",
                 "detail": f"Toplam {len(tools_used)} araç kullanılarak yanıt üretildi."
@@ -121,6 +131,7 @@ class OrchestratorAgent:
 
             return {
                 "response": final_text,
+                "conversation_id": conv_id,
                 "tools_used": tools_used,
                 "thinking_steps": thinking_steps,
                 "iterations": iteration,
@@ -137,6 +148,7 @@ class OrchestratorAgent:
                 simple_response = simple_model.generate_content(simple_prompt)
                 return {
                     "response": simple_response.text,
+                    "conversation_id": conv_id,
                     "tools_used": ["context_fallback"],
                     "thinking_steps": [
                         {"step": "Fallback", "detail": f"FC hatası, bağlam ile yanıt üretildi: {str(e)[:100]}"}
@@ -144,7 +156,9 @@ class OrchestratorAgent:
                 }
             except Exception as e2:
                 print(f"[WARN] Orchestrator fallback error: {e2}")
-                return self._mock_response(query)
+                mock = self._mock_response(query)
+                mock["conversation_id"] = conv_id
+                return mock
 
     async def synthesize_morning_brief(self, data: dict) -> str:
         """Sabah brifingi sentezler."""

@@ -345,11 +345,11 @@ class _StockPageState extends ConsumerState<StockPage> {
         ),
       );
     try {
-      final result = await ApiService.instance.chat(
-        '$productName için tedarik önerisi ver. Mevcut stok durumunu, en uygun tedarikçiyi ve sipariş miktarını öner.',
+      final result = await ApiService.instance.sendChat(
+        message: '$productName için tedarik önerisi ver. Mevcut stok durumunu, en uygun tedarikçiyi ve sipariş miktarını öner.',
       );
       if (!mounted) return;
-      final response = result['response'] as String? ?? 'Öneri alınamadı.';
+      final response = result.response.isNotEmpty ? result.response : 'Öneri alınamadı.';
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(

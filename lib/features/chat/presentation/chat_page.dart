@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/conversation_provider.dart';
 import '../../../core/services/api_service.dart';
 import 'chat_mock_data.dart';
 import 'widgets/chat_conversation_card.dart';
@@ -65,7 +66,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _AssistantIntroCard(),
+        Row(
+          children: [
+            const Expanded(child: _AssistantIntroCard()),
+            const SizedBox(width: 8),
+            _NewChatButton(onPressed: _startNewConversation),
+          ],
+        ),
         const SizedBox(height: 16),
         ChatConversationCard(
           messages: _messages,
@@ -118,25 +125,33 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     try {
       // Backend orchestrator'a gönder (ReAct döngüsü)
       final aiMode = ref.read(aiModeProvider);
-      final result = await ApiService.instance.chat(question, aiMode: aiMode);
+      final currentConvId = ref.read(conversationIdProvider);
+      final result = await ApiService.instance.sendChat(
+        message: question,
+        conversationId: currentConvId,
+        aiMode: aiMode,
+      );
 
-      responseText = result['response'] as String? ?? 'Yanıt alınamadı.';
+      // Backend'den dönen conversation_id'yi kaydet
+      if (result.conversationId.isNotEmpty) {
+        ref.read(conversationIdProvider.notifier).set(result.conversationId);
+      }
+
+      responseText = result.response.isNotEmpty ? result.response : 'Yanıt alınamadı.';
 
       // Kullanılan araçları parse et
-      final toolsUsed = result['tools_used'] as List<dynamic>? ?? [];
-      tools = toolsUsed
-          .map((t) => ToolUsageMock(t.toString()))
+      tools = result.toolsUsed
+          .map((t) => ToolUsageMock(t))
           .toList();
 
       // Düşünme adımlarını parse et
-      final thinkingSteps = result['thinking_steps'] as List<dynamic>? ?? [];
-      steps = thinkingSteps
-          .map((s) => (s as Map<String, dynamic>)['detail'] as String? ?? '')
+      steps = result.thinkingSteps
+          .map((s) => s['detail'] as String? ?? '')
           .where((s) => s.isNotEmpty)
           .toList();
     } catch (e) {
       // Backend'e ulaşılamazsa hata mesajı göster
-      responseText = 'Backend bağlantısı kurulamadı. Lütfen backend sunucusunun çalıştığından emin olun.';
+      responseText = 'Analiz hatası: $e';
       tools = [];
       steps = [];
     }
@@ -231,6 +246,76 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  /// Yeni sohbet başlat — mesajları temizle, conversation_id sıfırla
+  Future<void> _startNewConversation() async {
+    final oldId = ref.read(conversationIdProvider);
+
+    // Local state temizle
+    ref.read(conversationIdProvider.notifier).reset();
+    setState(() {
+      _messages.clear();
+      _messages.add(
+        ChatMessageMock(
+          id: 'assistant-initial',
+          role: ChatRole.assistant,
+          message:
+              'Merhaba! Yeni bir sohbet başlattınız. Size nasıl yardımcı olabilirim?',
+          timestamp: DateTime.now(),
+        ),
+      );
+      _messageCounter = 0;
+    });
+
+    // Backend'deki eski session'ı temizle
+    if (oldId != null) {
+      try {
+        await ApiService.instance.resetConversation(oldId);
+      } catch (_) {
+        // Sessizce yut — yeni mesaj zaten yeni ID üretecek
+      }
+    }
+
+    _showMessage('Yeni sohbet başlatıldı.');
+  }
+}
+
+class _NewChatButton extends StatelessWidget {
+  const _NewChatButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF002045),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_comment_outlined, color: Colors.white, size: 22),
+              SizedBox(height: 4),
+              Text(
+                'Yeni\nSohbet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

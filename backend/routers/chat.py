@@ -29,17 +29,26 @@ class ChatRequest(BaseModel):
 
 @router.post("")
 async def chat_with_ai(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    """AI asistan ile doğal dil sorgusu (ReAct Orchestrator ile)."""
-    # AI moduna göre ek bağlam ekle
     query = request.message
     if request.ai_mode == "careful":
-        query = f"[MOD: DİKKATLİ — Yalnızca kesin verilerle yanıt ver, belirsiz durumlarda uyar] {query}"
+        query = f"[MOD: DİKKATLİ — ...] {query}"
     elif request.ai_mode == "proactive":
-        query = f"[MOD: PROAKTİF — Ek öneriler sun, riskleri ve fırsatları aktif olarak belirt] {query}"
-    # balanced = varsayılan, ek prompt yok
+        query = f"[MOD: PROAKTİF — ...] {query}"
 
-    result = await orchestrator.handle_query(db, query)
-    return result
+    result = await orchestrator.handle_query(
+        db,
+        query,
+        conversation_id=request.conversation_id,  # ← ARTIK KULLANILIYOR
+    )
+    return result  # response'da conversation_id artık dönüyor
+
+
+@router.delete("/{conversation_id}")
+async def reset_conversation(conversation_id: str):
+    """Belirli bir conversation'ı sıfırlar."""
+    from services.conversation_service import conversation_store
+    conversation_store.reset(conversation_id)
+    return {"ok": True}
 
 
 @router.get("/suggestions")

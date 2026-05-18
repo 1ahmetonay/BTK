@@ -33,8 +33,8 @@ class ApiService {
   late final Dio _dio = Dio(
     BaseOptions(
       baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -166,16 +166,24 @@ class ApiService {
 
   // ─── Chat (AI Asistan) ─────────────────────────────────────────────
 
-  /// AI asistana soru sor
-  Future<Map<String, dynamic>> chat(String message, {String? aiMode}) async {
-    final response = await _dio.post(
-      '/api/v1/chat',
-      data: {
-        'message': message,
-        if (aiMode != null) 'ai_mode': aiMode,
-      },
-    );
-    return response.data as Map<String, dynamic>;
+  /// AI asistana soru sor (ChatResult modeli ile)
+  Future<ChatResult> sendChat({
+    required String message,
+    String? conversationId,
+    String? aiMode,
+  }) async {
+    final body = {
+      'message': message,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (aiMode != null) 'ai_mode': aiMode,
+    };
+    final res = await _dio.post('/api/v1/chat', data: body);
+    return ChatResult.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Konuşmayı sıfırla
+  Future<void> resetConversation(String conversationId) async {
+    await _dio.delete('/api/v1/chat/$conversationId');
   }
 
   /// AI önerileri
@@ -290,4 +298,31 @@ class ApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+}
+
+// ─── Chat Yanıt Modeli ──────────────────────────────────────────────
+
+class ChatResult {
+  final String response;
+  final String conversationId;
+  final List<String> toolsUsed;
+  final List<Map<String, dynamic>> thinkingSteps;
+
+  ChatResult({
+    required this.response,
+    required this.conversationId,
+    required this.toolsUsed,
+    required this.thinkingSteps,
+  });
+
+  factory ChatResult.fromJson(Map<String, dynamic> json) => ChatResult(
+        response: json['response'] as String? ?? '',
+        conversationId: json['conversation_id'] as String? ?? '',
+        toolsUsed:
+            (json['tools_used'] as List?)?.map((e) => e.toString()).toList() ??
+                [],
+        thinkingSteps: (json['thinking_steps'] as List?)
+                ?.cast<Map<String, dynamic>>() ??
+            [],
+      );
 }

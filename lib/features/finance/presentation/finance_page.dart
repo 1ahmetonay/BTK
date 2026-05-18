@@ -421,11 +421,11 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('AI önerisi analiz ediliyor...'), duration: Duration(seconds: 1)));
     try {
-      final result = await ApiService.instance.chat(
-        'Bu finans önerisini detaylandır ve somut adımlar öner: $msg',
+      final result = await ApiService.instance.sendChat(
+        message: 'Bu finans önerisini detaylandır ve somut adımlar öner: $msg',
       );
       if (!mounted) return;
-      final response = result['response'] as String? ?? 'Detay alınamadı.';
+      final response = result.response.isNotEmpty ? result.response : 'Detay alınamadı.';
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -457,11 +457,11 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         ),
       );
     try {
-      final result = await ApiService.instance.chat(
-        '$customerName için ödeme hatırlatma mesajı yaz. Resmi ama nazik bir dille, ödeme tutarını ve gecikme süresini belirt.',
+      final result = await ApiService.instance.sendChat(
+        message: '$customerName için ödeme hatırlatma mesajı yaz. Resmi ama nazik bir dille, ödeme tutarını ve gecikme süresini belirt.',
       );
       if (!mounted) return;
-      final response = result['response'] as String? ?? 'Taslak oluşturulamadı.';
+      final response = result.response.isNotEmpty ? result.response : 'Taslak oluşturulamadı.';
 
       // Hatırlatma taslağı dialog'u — tarih seçici ve kaydet butonu ile
       DateTime selectedDate = DateTime.now().add(const Duration(days: 3));
@@ -544,8 +544,8 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                   Navigator.of(ctx).pop();
                   // Backend'e uyarı/hatırlatma olarak kaydet
                   try {
-                    await ApiService.instance.chat(
-                      'SYSTEM: $customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihinde ödeme hatırlatması oluştur.',
+                    await ApiService.instance.sendChat(
+                      message: 'SYSTEM: $customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihinde ödeme hatırlatması oluştur.',
                     );
                   } catch (_) {}
                   if (mounted) {
