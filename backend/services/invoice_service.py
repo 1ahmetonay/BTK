@@ -11,6 +11,7 @@ from typing import Optional
 from uuid import uuid4
 
 import qrcode
+from qrcode.constants import ERROR_CORRECT_M
 from jinja2 import Template
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -163,10 +164,15 @@ class InvoiceService:
 
     def _generate_qr_code(self, data: str) -> bytes:
         """GİB standardında QR kod üretir."""
-        qr = qrcode.QRCode(version=1, box_size=4, border=2)
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=ERROR_CORRECT_M,
+            box_size=8,
+            border=4,
+        )
         qr.add_data(data)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue()
@@ -281,14 +287,20 @@ class InvoiceService:
             "Totals", parent=styles["Normal"], alignment=2, leading=16,
         ))
 
-        # QR kodu PDF'e embed et
+        # QR kodu PDF'e embed et. PNG'yi BytesIO üzerinde tutmak ReportLab'in
+        # PDF build aşamasında görseli güvenilir şekilde okuyabilmesi için gerekli.
         qr_buf = io.BytesIO(qr_bytes)
-        qr_image = Image(qr_buf, width=28*mm, height=28*mm)
+        qr_image = Image(qr_buf, width=40*mm, height=40*mm)
+        qr_label = Paragraph(
+            "<font size='7' color='#43474E'>QR Doğrulama</font>",
+            ParagraphStyle("QrLabel", parent=styles["Normal"], alignment=1),
+        )
 
-        footer_data = [[qr_image, totals_para]]
-        footer_table = Table(footer_data, colWidths=[100, 370])
+        footer_data = [[[qr_image, qr_label], totals_para]]
+        footer_table = Table(footer_data, colWidths=[135, 335])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (0, 0), (0, 0), "CENTER"),
             ("ALIGN", (1, 0), (1, 0), "RIGHT"),
             ("LINEABOVE", (0, 0), (-1, 0), 1.5, brand_color),
             ("TOPPADDING", (0, 0), (-1, -1), 10),

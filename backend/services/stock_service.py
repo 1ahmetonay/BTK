@@ -5,8 +5,9 @@ Stok yönetimi, kritik kontrol, ABC analizi, tedarikçi karşılaştırma.
 
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+import unicodedata
 
-from sqlalchemy import func, select, and_
+from sqlalchemy import func, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import Urun, StokHareket, FiyatGecmisi, Tedarikci
@@ -75,8 +76,7 @@ class StockService:
 
     async def get_product_analysis(self, db: AsyncSession, sku: str) -> dict:
         """Tek ürün için detaylı analiz."""
-        result = await db.execute(select(Urun).where(Urun.sku == sku))
-        product = result.scalar_one_or_none()
+        product = await self._find_product(db, sku)
         if not product:
             return {"error": f"Ürün bulunamadı: {sku}"}
 
@@ -151,8 +151,7 @@ class StockService:
 
     async def get_supplier_comparison(self, db: AsyncSession, sku: str) -> dict:
         """Bir ürün için tedarikçi karşılaştırması."""
-        result = await db.execute(select(Urun).where(Urun.sku == sku))
-        product = result.scalar_one_or_none()
+        product = await self._find_product(db, sku)
         if not product:
             return {"error": f"Ürün bulunamadı: {sku}"}
 
@@ -275,8 +274,7 @@ class StockService:
 
     async def get_seasonality_pattern(self, db: AsyncSession, sku: str) -> dict:
         """Ürünün aylık hareket pattern'ını analiz eder (mevsimsellik)."""
-        result = await db.execute(select(Urun).where(Urun.sku == sku))
-        product = result.scalar_one_or_none()
+        product = await self._find_product(db, sku)
         if not product:
             return {"error": f"Ürün bulunamadı: {sku}"}
 
@@ -318,7 +316,7 @@ class StockService:
 
         return {
             "urun": product.isim,
-            "sku": sku,
+            "sku": product.sku,
             "aylik_pattern": pattern,
             "en_yogun_ay": en_yogun,
             "en_dusuk_ay": en_dusuk,
@@ -327,8 +325,7 @@ class StockService:
 
     async def simulate_price_change(self, db: AsyncSession, sku: str, price_change_pct: float) -> dict:
         """Fiyat değişikliğinin stok eritme hızına etkisini simüle eder (What-If)."""
-        result = await db.execute(select(Urun).where(Urun.sku == sku))
-        product = result.scalar_one_or_none()
+        product = await self._find_product(db, sku)
         if not product:
             return {"error": f"Ürün bulunamadı: {sku}"}
 
@@ -353,7 +350,7 @@ class StockService:
 
         return {
             "urun": product.isim,
-            "sku": sku,
+            "sku": product.sku,
             "mevcut_fiyat": round(mevcut_fiyat, 2),
             "yeni_fiyat": round(yeni_fiyat, 2),
             "fiyat_degisimi_pct": price_change_pct,
@@ -365,6 +362,75 @@ class StockService:
             "aylik_gelir_yeni": round(aylik_satis_yeni, 2),
             "gelir_farki": round(aylik_satis_yeni - aylik_satis_mevcut, 2),
         }
+
+    async def _find_product(self, db: AsyncSession, sku_or_name: str) -> Optional[Urun]:
+        """SKU'yu toleranslı çözer; AI ürün adı gönderirse ada göre de eşleştirir."""
+        lookup = (sku_or_name or "").strip()
+        if not lookup:
+            return None
+
+        normalized = lookup.upper()
+        result = await db.execute(
+            select(Urun)
+            .where(
+                and_(
+                    Urun.aktif == True,
+                    func.upper(func.trim(Urun.sku)) == normalized,
+                )
+            )
+            .limit(1)
+        )
+        product = result.scalar_one_or_none()
+        if product:
+            return product
+
+        name_lookup = lookup.lower()
+        result = await db.execute(
+            select(Urun)
+            .where(
+                and_(
+                    Urun.aktif == True,
+                    or_(
+                        func.lower(func.trim(Urun.isim)) == name_lookup,
+                        func.lower(Urun.isim).like(f"%{name_lookup}%"),
+                    ),
+                )
+            )
+            .order_by(Urun.isim.asc())
+            .limit(1)
+        )
+        product = result.scalar_one_or_none()
+        if product:
+            return product
+
+        normalized_lookup = self._normalize_lookup(lookup)
+        result = await db.execute(
+            select(Urun).where(Urun.aktif == True).order_by(Urun.isim.asc())
+        )
+        products = result.scalars().all()
+        for product in products:
+            if self._normalize_lookup(product.sku) == normalized_lookup:
+                return product
+
+        for product in products:
+            normalized_name = self._normalize_lookup(product.isim)
+            if normalized_name == normalized_lookup or normalized_lookup in normalized_name:
+                return product
+
+        return None
+
+    def _normalize_lookup(self, value: str) -> str:
+        """Arama değerini case/aksan/Türkçe karakter farklarından arındırır."""
+        translated = (value or "").strip().casefold().translate(str.maketrans({
+            "ı": "i",
+            "ğ": "g",
+            "ü": "u",
+            "ş": "s",
+            "ö": "o",
+            "ç": "c",
+        }))
+        decomposed = unicodedata.normalize("NFKD", translated)
+        return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
 
     def _product_to_dict(self, p: Urun) -> dict:
         """Urun nesnesini dict'e çevirir."""

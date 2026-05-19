@@ -69,10 +69,7 @@ class _AppShellState extends State<AppShell> {
       body: Row(
         children: [
           // Sabit sidebar
-          AppSidebar(
-            currentRoute: _currentRoute,
-            onRouteSelected: _goTo,
-          ),
+          AppSidebar(currentRoute: _currentRoute, onRouteSelected: _goTo),
           // Ana içerik
           Expanded(
             child: Column(
@@ -93,34 +90,34 @@ class _AppShellState extends State<AppShell> {
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
                       child: Center(
-                      child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        reverseDuration: const Duration(milliseconds: 160),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeOutCubic,
-                        transitionBuilder: (child, animation) {
-                          final offsetAnimation = Tween<Offset>(
-                            begin: const Offset(0, 0.01),
-                            end: Offset.zero,
-                          ).animate(animation);
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1200),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            reverseDuration: const Duration(milliseconds: 160),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeOutCubic,
+                            transitionBuilder: (child, animation) {
+                              final offsetAnimation = Tween<Offset>(
+                                begin: const Offset(0, 0.01),
+                                end: Offset.zero,
+                              ).animate(animation);
 
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: offsetAnimation,
-                              child: child,
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: offsetAnimation,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: KeyedSubtree(
+                              key: ValueKey<String>(_currentRoute),
+                              child: _pageFor(_currentRoute),
                             ),
-                          );
-                        },
-                        child: KeyedSubtree(
-                          key: ValueKey<String>(_currentRoute),
-                          child: _pageFor(_currentRoute),
+                          ),
                         ),
                       ),
-                    ),
-                    ),
                     ),
                   ),
                 ),
@@ -216,6 +213,7 @@ class _AppShellState extends State<AppShell> {
   static const _bottomRoutes = [
     AppRoutes.dashboard,
     AppRoutes.documents,
+    AppRoutes.archive,
     AppRoutes.chat,
     AppRoutes.finance,
     AppRoutes.stock,
@@ -263,6 +261,11 @@ class _ShellBottomNavigation extends StatelessWidget {
       label: 'Belgeler',
       icon: Icons.description_outlined,
       selectedIcon: Icons.description,
+    ),
+    _BottomNavItem(
+      label: 'Arşiv',
+      icon: Icons.archive_outlined,
+      selectedIcon: Icons.archive,
     ),
     _BottomNavItem(
       label: 'AI',
@@ -329,9 +332,7 @@ class _BottomNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected
-        ? AppColors.primary
-        : AppColors.mutedText;
+    final foreground = selected ? AppColors.primary : AppColors.mutedText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),

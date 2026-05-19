@@ -44,9 +44,12 @@ async def get_kdv_summary(
 
 
 @router.get("/overdue")
-async def get_overdue_payments(db: AsyncSession = Depends(get_db)):
+async def get_overdue_payments(
+    tur: Optional[str] = Query(None, description="Fatura turu: satis veya satin_alma"),
+    db: AsyncSession = Depends(get_db),
+):
     """Gecikmis odemeler."""
-    return await finance_service.get_overdue_payments(db)
+    return await finance_service.get_overdue_payments(db, tur=tur)
 
 
 @router.get("/invoices")

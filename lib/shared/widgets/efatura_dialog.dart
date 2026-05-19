@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/services/api_service.dart';
+import '../../core/utils/file_download.dart';
 
 /// E-Fatura kesme dialog'u — form doldurup fatura üretir.
 /// Herhangi bir sayfadan `showEFaturaDialog(context)` ile açılır.
@@ -46,8 +47,10 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
   double get _araToplam =>
       _kalemler.fold(0, (sum, k) => sum + k.miktar * k.birimFiyat);
 
-  double get _toplamKdv =>
-      _kalemler.fold(0, (sum, k) => sum + k.miktar * k.birimFiyat * k.kdvOrani / 100);
+  double get _toplamKdv => _kalemler.fold(
+    0,
+    (sum, k) => sum + k.miktar * k.birimFiyat * k.kdvOrani / 100,
+  );
 
   double get _genelToplam => _araToplam + _toplamKdv;
 
@@ -98,7 +101,10 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                     ),
                     Text(
                       'UBL-TR 1.2 • QR Kod • PDF',
-                      style: TextStyle(color: AppColors.successLight, fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.successLight,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -133,8 +139,9 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                         child: TextFormField(
                           controller: _musteriAdiController,
                           decoration: _inputDecor('Müşteri / Firma Adı'),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Zorunlu' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Zorunlu'
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -159,11 +166,15 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                     children: [
                       const Text(
                         'Fatura Kalemleri',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
                       ),
                       const Spacer(),
                       TextButton.icon(
-                        onPressed: () => setState(() => _kalemler.add(_FaturaKalem())),
+                        onPressed: () =>
+                            setState(() => _kalemler.add(_FaturaKalem())),
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Kalem Ekle'),
                         style: TextButton.styleFrom(
@@ -193,14 +204,22 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                         _totalRow('Ara Toplam', _araToplam),
                         _totalRow('KDV', _toplamKdv),
                         const Divider(height: 16),
-                        _totalRow('Genel Toplam', _genelToplam, bold: true, large: true),
+                        _totalRow(
+                          'Genel Toplam',
+                          _genelToplam,
+                          bold: true,
+                          large: true,
+                        ),
                       ],
                     ),
                   ),
 
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
                   ],
                 ],
               ),
@@ -223,9 +242,11 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                   onPressed: _loading ? null : _submitInvoice,
                   icon: _loading
                       ? const SizedBox(
-                          width: 18, height: 18,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white,
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
                         )
                       : const Icon(Icons.send),
@@ -280,7 +301,9 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
             child: TextFormField(
               controller: kalem.fiyatCtrl,
               decoration: _inputDecor('Birim Fiyat (TL)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(fontSize: 13),
               onChanged: (_) => setState(() {}),
             ),
@@ -318,7 +341,12 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
     );
   }
 
-  Widget _totalRow(String label, double value, {bool bold = false, bool large = false}) {
+  Widget _totalRow(
+    String label,
+    double value, {
+    bool bold = false,
+    bool large = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -357,7 +385,11 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle, color: AppColors.emeraldDark, size: 56),
+          const Icon(
+            Icons.check_circle,
+            color: AppColors.emeraldDark,
+            size: 56,
+          ),
           const SizedBox(height: 16),
           const Text(
             'E-Fatura Oluşturuldu',
@@ -366,13 +398,20 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
           const SizedBox(height: 20),
           _resultRow('Fatura No', fNo.toString()),
           _resultRow('Müşteri', musteri.toString()),
-          _resultRow('Genel Toplam', '${(toplam as num).toStringAsFixed(2)} TL'),
+          _resultRow(
+            'Genel Toplam',
+            '${(toplam as num).toStringAsFixed(2)} TL',
+          ),
           _resultRow('Tarih', _result!['tarih']?.toString() ?? '-'),
           const SizedBox(height: 20),
           const Text(
             'PDF, UBL-TR XML ve QR kod başarıyla üretildi.\nStok ve nakit akışı otomatik güncellendi.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.mutedText, height: 1.5),
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.mutedText,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 24),
           Row(
@@ -386,7 +425,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
               if (pdfBase64 != null && pdfBase64.isNotEmpty) ...[
                 const SizedBox(width: 12),
                 FilledButton.icon(
-                  onPressed: () => _downloadPdf(pdfBase64),
+                  onPressed: () => _downloadPdf(pdfBase64, fNo.toString()),
                   icon: const Icon(Icons.download),
                   label: const Text('PDF İndir'),
                   style: FilledButton.styleFrom(
@@ -425,22 +464,40 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
     );
   }
 
-  void _downloadPdf(String base64Data) {
-    // Web'de base64 PDF indirme
-    // ignore: avoid_web_libraries_in_flutter
-    // Bu kısım web için çalışır; mobilde farkl�� yöntem gerekir
+  Future<void> _downloadPdf(String base64Data, String invoiceNo) async {
     try {
       final bytes = base64Decode(base64Data);
-      // Basit bildirim — gerçek indirme için platform-specific kod gerekir
+      final fileName = '${_safeFileName(invoiceNo)}.pdf';
+      final downloaded = await downloadBytes(
+        bytes: bytes,
+        fileName: fileName,
+        mimeType: 'application/pdf',
+      );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('PDF hazır (${(bytes.length / 1024).toStringAsFixed(1)} KB)'),
+          content: Text(
+            downloaded
+                ? '$fileName indirildi (${(bytes.length / 1024).toStringAsFixed(1)} KB)'
+                : 'PDF indirme iptal edildi.',
+          ),
           backgroundColor: AppColors.emeraldDark,
         ),
       );
-    } catch (_) {
-      // Fallback
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF indirilemedi: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
+  }
+
+  String _safeFileName(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
+    return cleaned.isEmpty ? 'e-fatura' : cleaned;
   }
 
   Future<void> _submitInvoice() async {

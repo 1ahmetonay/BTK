@@ -69,15 +69,24 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
       }).toList();
 
       // Gerçek veriden günlük özet oluştur
-      final kritikSayi = mapped.where((a) => a.priority == AlertPriority.critical && a.status == AlertStatus.active).length;
-      final aktifSayi = mapped.where((a) => a.status == AlertStatus.active).length;
+      final kritikSayi = mapped
+          .where(
+            (a) =>
+                a.priority == AlertPriority.critical &&
+                a.status == AlertStatus.active,
+          )
+          .length;
+      final aktifSayi = mapped
+          .where((a) => a.status == AlertStatus.active)
+          .length;
       final kategoriler = <String>{};
-      for (final a in mapped.where((a) => a.status == AlertStatus.active).take(3)) {
+      for (final a
+          in mapped.where((a) => a.status == AlertStatus.active).take(3)) {
         kategoriler.add(a.category.label);
       }
       final liveSummary = aktifSayi > 0
           ? 'Bugün $aktifSayi aktif uyarı mevcut${kritikSayi > 0 ? ' ($kritikSayi kritik)' : ''}. '
-            'Öncelikli konular: ${kategoriler.join(', ')}.'
+                'Öncelikli konular: ${kategoriler.join(', ')}.'
           : 'Tüm uyarılar çözüldü, aktif sorun bulunmuyor.';
 
       setState(() {
@@ -99,18 +108,28 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
   AlertCategory _mapCategory(String tur) {
     if (tur.contains('stok')) return AlertCategory.stock;
     if (tur.contains('kdv') || tur.contains('vergi')) return AlertCategory.kdv;
-    if (tur.contains('nakit') || tur.contains('odeme')) return AlertCategory.finance;
-    if (tur.contains('puantaj') || tur.contains('calisan')) return AlertCategory.employees;
-    if (tur.contains('belge') || tur.contains('fatura')) return AlertCategory.document;
+    if (tur.contains('nakit') || tur.contains('odeme')) {
+      return AlertCategory.finance;
+    }
+    if (tur.contains('puantaj') || tur.contains('calisan')) {
+      return AlertCategory.employees;
+    }
+    if (tur.contains('belge') || tur.contains('fatura')) {
+      return AlertCategory.document;
+    }
     return AlertCategory.stock;
   }
 
   AlertPriority _mapPriority(String oncelik) {
     switch (oncelik) {
-      case 'kritik': return AlertPriority.critical;
-      case 'yuksek': return AlertPriority.high;
-      case 'dusuk': return AlertPriority.low;
-      default: return AlertPriority.medium;
+      case 'kritik':
+        return AlertPriority.critical;
+      case 'yuksek':
+        return AlertPriority.high;
+      case 'dusuk':
+        return AlertPriority.low;
+      default:
+        return AlertPriority.medium;
     }
   }
 
@@ -125,13 +144,20 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
-                setState(() { _loading = true; _error = null; });
+                setState(() {
+                  _loading = true;
+                  _error = null;
+                });
                 _fetchAlerts();
               },
               icon: const Icon(Icons.refresh),
@@ -144,11 +170,27 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
     }
 
     final visibleAlerts = _filteredAlerts();
-    final critikSayi = _alerts.where((a) => a.priority == AlertPriority.critical && a.status == AlertStatus.active).length;
-    final toplamAktif = _alerts.where((a) => a.status == AlertStatus.active).length;
+    final critikSayi = _alerts
+        .where(
+          (a) =>
+              a.priority == AlertPriority.critical &&
+              a.status == AlertStatus.active,
+        )
+        .length;
+    final toplamAktif = _alerts
+        .where((a) => a.status == AlertStatus.active)
+        .length;
 
-    final cozulenSayi = _alerts.where((a) => a.status == AlertStatus.resolved).length;
-    final bekleyenSayi = _alerts.where((a) => a.status == AlertStatus.active && a.priority != AlertPriority.critical).length;
+    final cozulenSayi = _alerts
+        .where((a) => a.status == AlertStatus.resolved)
+        .length;
+    final bekleyenSayi = _alerts
+        .where(
+          (a) =>
+              a.status == AlertStatus.active &&
+              a.priority != AlertPriority.critical,
+        )
+        .length;
 
     // Tüm summary kartları gerçek veriden
     final liveSummaries = [
@@ -212,7 +254,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
           alerts: visibleAlerts,
           onStartAction: _startAction,
           onResolve: _resolveAlert,
-          onIgnore: _ignoreAlert,
+          onIgnore: (alert) => _ignoreAlert(alert),
         ),
         const SizedBox(height: 16),
         if (_alerts.any((a) => a.status == AlertStatus.resolved))
@@ -278,31 +320,68 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
   List<AlertDistributionMock> _buildPriorityDistribution() {
     final active = _alerts.where((a) => a.status == AlertStatus.active);
     return [
-      AlertDistributionMock(label: 'Kritik', value: '${active.where((a) => a.priority == AlertPriority.critical).length}', tone: StatusTone.danger),
-      AlertDistributionMock(label: 'Yüksek', value: '${active.where((a) => a.priority == AlertPriority.high).length}', tone: StatusTone.warning),
-      AlertDistributionMock(label: 'Orta', value: '${active.where((a) => a.priority == AlertPriority.medium).length}', tone: StatusTone.warning),
-      AlertDistributionMock(label: 'Düşük', value: '${active.where((a) => a.priority == AlertPriority.low).length}', tone: StatusTone.info),
+      AlertDistributionMock(
+        label: 'Kritik',
+        value:
+            '${active.where((a) => a.priority == AlertPriority.critical).length}',
+        tone: StatusTone.danger,
+      ),
+      AlertDistributionMock(
+        label: 'Yüksek',
+        value:
+            '${active.where((a) => a.priority == AlertPriority.high).length}',
+        tone: StatusTone.warning,
+      ),
+      AlertDistributionMock(
+        label: 'Orta',
+        value:
+            '${active.where((a) => a.priority == AlertPriority.medium).length}',
+        tone: StatusTone.warning,
+      ),
+      AlertDistributionMock(
+        label: 'Düşük',
+        value: '${active.where((a) => a.priority == AlertPriority.low).length}',
+        tone: StatusTone.info,
+      ),
     ];
   }
 
   List<AlertDistributionMock> _buildCategoryDistribution() {
     final active = _alerts.where((a) => a.status == AlertStatus.active);
     return [
-      AlertDistributionMock(label: 'Stok', value: '${active.where((a) => a.category == AlertCategory.stock).length}', tone: StatusTone.info),
-      AlertDistributionMock(label: 'Finans', value: '${active.where((a) => a.category == AlertCategory.finance).length}', tone: StatusTone.success),
-      AlertDistributionMock(label: 'KDV', value: '${active.where((a) => a.category == AlertCategory.kdv).length}', tone: StatusTone.warning),
-      AlertDistributionMock(label: 'Puantaj', value: '${active.where((a) => a.category == AlertCategory.employees).length}', tone: StatusTone.neutral),
-      AlertDistributionMock(label: 'Belge', value: '${active.where((a) => a.category == AlertCategory.document).length}', tone: StatusTone.info),
+      AlertDistributionMock(
+        label: 'Stok',
+        value:
+            '${active.where((a) => a.category == AlertCategory.stock).length}',
+        tone: StatusTone.info,
+      ),
+      AlertDistributionMock(
+        label: 'Finans',
+        value:
+            '${active.where((a) => a.category == AlertCategory.finance).length}',
+        tone: StatusTone.success,
+      ),
+      AlertDistributionMock(
+        label: 'KDV',
+        value: '${active.where((a) => a.category == AlertCategory.kdv).length}',
+        tone: StatusTone.warning,
+      ),
+      AlertDistributionMock(
+        label: 'Puantaj',
+        value:
+            '${active.where((a) => a.category == AlertCategory.employees).length}',
+        tone: StatusTone.neutral,
+      ),
+      AlertDistributionMock(
+        label: 'Belge',
+        value:
+            '${active.where((a) => a.category == AlertCategory.document).length}',
+        tone: StatusTone.info,
+      ),
     ];
   }
 
   Future<void> _startAction(AlertMock alert) async {
-    if (_apiLoaded) {
-      try {
-        await ApiService.instance.markAlertActionTaken(int.tryParse(alert.id) ?? 0);
-      } catch (_) {}
-    }
-
     if (!mounted) return;
 
     // Uyarı tipine göre somut aksiyon dialog'u göster
@@ -316,11 +395,17 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(alert.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  alert.title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 Text(alert.description),
                 const SizedBox(height: 12),
-                const Text('Önerilen Aksiyon:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                const Text(
+                  'Önerilen Aksiyon:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 Text(alert.recommendedAction),
                 const SizedBox(height: 12),
@@ -333,22 +418,36 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, size: 16, color: AppColors.secondary),
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: AppColors.secondary,
+                      ),
                       SizedBox(width: 8),
-                      Expanded(child: Text('Stok Yönetimi sayfasından tedarikçi karşılaştırması yapabilirsiniz.', style: TextStyle(fontSize: 12))),
+                      Expanded(
+                        child: Text(
+                          'Stok Yönetimi sayfasından tedarikçi karşılaştırması yapabilirsiniz.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Kapat'),
+              ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -363,11 +462,17 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(alert.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  alert.title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 Text(alert.description),
                 const SizedBox(height: 12),
-                const Text('Önerilen Aksiyon:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                const Text(
+                  'Önerilen Aksiyon:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 Text(alert.recommendedAction),
                 const SizedBox(height: 12),
@@ -380,22 +485,36 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, size: 16, color: AppColors.warning),
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
                       SizedBox(width: 8),
-                      Expanded(child: Text('Finans sayfasından gecikmiş ödemeler için hatırlatma taslağı oluşturabilirsiniz.', style: TextStyle(fontSize: 12))),
+                      Expanded(
+                        child: Text(
+                          'Finans sayfasından gecikmiş ödemeler için hatırlatma taslağı oluşturabilirsiniz.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Kapat'),
+              ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -410,7 +529,10 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(alert.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  alert.title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 Text(alert.description),
                 const SizedBox(height: 12),
@@ -425,22 +547,36 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.warning_amber_outlined, size: 16, color: AppColors.warningAmber),
+                      Icon(
+                        Icons.warning_amber_outlined,
+                        size: 16,
+                        color: AppColors.warningAmber,
+                      ),
                       SizedBox(width: 8),
-                      Expanded(child: Text('Finans sayfasındaki KDV özet kartından detaylı bilgi alabilirsiniz.', style: TextStyle(fontSize: 12))),
+                      Expanded(
+                        child: Text(
+                          'Finans sayfasındaki KDV özet kartından detaylı bilgi alabilirsiniz.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Kapat'),
+              ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -456,31 +592,40 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(alert.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  alert.title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 Text(alert.description),
                 const SizedBox(height: 12),
-                const Text('Önerilen Aksiyon:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                const Text(
+                  'Önerilen Aksiyon:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 Text(alert.recommendedAction),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Kapat'),
+              ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
           ),
         );
     }
-
-    _fetchAlerts();
   }
 
   Future<void> _resolveAlert(AlertMock alert) async {
@@ -502,7 +647,14 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
     _fetchAlerts();
   }
 
-  void _ignoreAlert(AlertMock alert) {
+  Future<void> _ignoreAlert(AlertMock alert) async {
+    if (_apiLoaded) {
+      try {
+        await ApiService.instance.markAlertActionTaken(
+          int.tryParse(alert.id) ?? 0,
+        );
+      } catch (_) {}
+    }
     setState(() {
       _alerts = _alerts
           .map(
@@ -629,9 +781,7 @@ class _SummaryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: critical
-                  ? AppColors.errorDark
-                  : AppColors.mutedText,
+              color: critical ? AppColors.errorDark : AppColors.mutedText,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -651,9 +801,7 @@ class _SummaryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: critical
-                  ? AppColors.errorDark
-                  : AppColors.mutedText,
+              color: critical ? AppColors.errorDark : AppColors.mutedText,
               fontSize: 11,
             ),
           ),
@@ -696,7 +844,11 @@ class _DailySummaryCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
+            const Icon(
+              Icons.auto_awesome,
+              color: AppColors.secondary,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -745,21 +897,39 @@ class _ResolvedAlertStrip extends StatelessWidget {
           children: [
             Row(
               children: [
-                StatusBadge(label: alert.category.label, tone: alert.category.tone),
+                StatusBadge(
+                  label: alert.category.label,
+                  tone: alert.category.tone,
+                ),
                 const SizedBox(width: 8),
-                StatusBadge(label: alert.priority.label, tone: alert.priority.tone),
+                StatusBadge(
+                  label: alert.priority.label,
+                  tone: alert.priority.tone,
+                ),
                 const SizedBox(width: 8),
                 const StatusBadge(label: 'ÇÖZÜLDÜ', tone: StatusTone.success),
               ],
             ),
             const SizedBox(height: 14),
-            Text(alert.description, style: const TextStyle(fontSize: 14, height: 1.45)),
+            Text(
+              alert.description,
+              style: const TextStyle(fontSize: 14, height: 1.45),
+            ),
             const SizedBox(height: 10),
-            const Text('Önerilen Aksiyon:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            const Text(
+              'Önerilen Aksiyon:',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
             const SizedBox(height: 4),
-            Text(alert.recommendedAction, style: const TextStyle(fontSize: 13, height: 1.4)),
+            Text(
+              alert.recommendedAction,
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
             const SizedBox(height: 10),
-            Text('Zaman: ${alert.timeLabel}', style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+            Text(
+              'Zaman: ${alert.timeLabel}',
+              style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+            ),
           ],
         ),
         actions: [
@@ -780,10 +950,7 @@ class _ResolvedAlertStrip extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceDim,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.outline,
-          style: BorderStyle.solid,
-        ),
+        border: Border.all(color: AppColors.outline, style: BorderStyle.solid),
       ),
       child: Row(
         children: [

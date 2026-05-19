@@ -7,12 +7,14 @@ import '../stock_mock_data.dart';
 class CriticalStockCard extends StatelessWidget {
   const CriticalStockCard({
     required this.products,
+    required this.recommendingSku,
     required this.onRecommend,
     super.key,
   });
 
   final List<ProductStockMock> products;
-  final ValueChanged<String> onRecommend;
+  final String? recommendingSku;
+  final ValueChanged<ProductStockMock> onRecommend;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,8 @@ class CriticalStockCard extends StatelessWidget {
         for (final product in products) ...[
           _CriticalProductCard(
             product: product,
-            onRecommend: () => onRecommend(product.productName),
+            isRecommending: recommendingSku == product.sku,
+            onRecommend: () => onRecommend(product),
           ),
           const SizedBox(height: 10),
         ],
@@ -36,10 +39,12 @@ class CriticalStockCard extends StatelessWidget {
 class _CriticalProductCard extends StatelessWidget {
   const _CriticalProductCard({
     required this.product,
+    required this.isRecommending,
     required this.onRecommend,
   });
 
   final ProductStockMock product;
+  final bool isRecommending;
   final VoidCallback onRecommend;
 
   @override
@@ -95,10 +100,14 @@ class _CriticalProductCard extends StatelessWidget {
             width: double.infinity,
             height: 40,
             child: FilledButton(
-              onPressed: onRecommend,
+              onPressed: isRecommending ? null : onRecommend,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.72,
+                ),
                 foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -107,7 +116,7 @@ class _CriticalProductCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              child: const Text('Tedarik Öner'),
+              child: Text(isRecommending ? 'Hazırlanıyor...' : 'Tedarik Öner'),
             ),
           ),
         ],

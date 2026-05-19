@@ -55,12 +55,14 @@ class OverduePaymentMock {
     required this.amount,
     required this.delay,
     required this.actionLabel,
+    this.invoiceId,
   });
 
   final String customerName;
   final String amount;
   final String delay;
   final String actionLabel;
+  final int? invoiceId;
 }
 
 class FinanceMovementMock {
@@ -81,11 +83,13 @@ class FinanceMovementMock {
 
 class FinanceInsightMock {
   const FinanceInsightMock({
+    required this.title,
     required this.message,
     required this.icon,
     this.iconColor = AppColors.primary,
   });
 
+  final String title;
   final String message;
   final IconData icon;
   final Color iconColor;

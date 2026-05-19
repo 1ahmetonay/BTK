@@ -50,7 +50,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         ApiService.instance.getPlSummary(),
         ApiService.instance.getCashflow(),
         ApiService.instance.getKdvSummary(),
-        ApiService.instance.getOverduePayments(),
+        ApiService.instance.getOverduePayments(type: 'satis'),
       ]);
 
       if (!mounted) return;
@@ -130,22 +130,30 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         calculatedVat: '${_fmt((kdv['hesaplanan_kdv'] ?? 0.0) as double)} TL',
         deductibleVat: '${_fmt((kdv['indirilecek_kdv'] ?? 0.0) as double)} TL',
         payableVat: '${_fmt(kdvOdenecek.toDouble())} TL',
-        deadline: (kdv['son_odeme_tarihi'] ?? kdv['beyanname_son_tarihi']) as String? ?? '—',
-        statusLabel: kdv['durum'] as String? ??
+        deadline:
+            (kdv['son_odeme_tarihi'] ?? kdv['beyanname_son_tarihi'])
+                as String? ??
+            '—',
+        statusLabel:
+            kdv['durum'] as String? ??
             (kdv['uyari'] == true ? 'Son gün yaklaşıyor' : 'Normal'),
         warning: 'KDV hesaplandı. Lütfen son tarihi kontrol edin.',
       );
 
       // Cashflow
       final bakiye = (cashflow['mevcut_bakiye'] ?? 0.0) as num;
-      final projeksiyon = (cashflow['projeksiyon'] ?? cashflow['projeksiyonlar']) as List<dynamic>? ?? [];
+      final projeksiyon =
+          (cashflow['projeksiyon'] ?? cashflow['projeksiyonlar'])
+              as List<dynamic>? ??
+          [];
 
       double donemSonuTahmini;
       if (cashflow['donem_sonu_tahmini'] != null) {
         donemSonuTahmini = (cashflow['donem_sonu_tahmini'] as num).toDouble();
       } else if (projeksiyon.isNotEmpty) {
         final last = projeksiyon.last as Map<String, dynamic>;
-        donemSonuTahmini = (last['tahmini_bakiye'] as num?)?.toDouble() ?? bakiye.toDouble();
+        donemSonuTahmini =
+            (last['tahmini_bakiye'] as num?)?.toDouble() ?? bakiye.toDouble();
       } else {
         donemSonuTahmini = bakiye.toDouble();
       }
@@ -168,21 +176,30 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         final val = (pm['tahmini_bakiye'] ?? 0.0) as num;
         final gunLabel = pm['gun'];
         return CashflowPointMock(
-          label: gunLabel is int ? '$gunLabel. gün' : (gunLabel as String? ?? '—'),
+          label: gunLabel is int
+              ? '$gunLabel. gün'
+              : (gunLabel as String? ?? '—'),
           value: '${_fmt(val.toDouble())} TL',
-          description: pm['notlar'] as String? ?? (val < 0 ? 'Risk bölgesi' : ''),
+          description:
+              pm['notlar'] as String? ?? (val < 0 ? 'Risk bölgesi' : ''),
           tone: val < 0 ? StatusTone.danger : StatusTone.info,
         );
       }).toList();
 
-      final bool hasRisk = projeksiyon.any((p) => (p as Map<String, dynamic>)['risk'] == true);
-      final riskStr = cashflow['risk_uyarisi'] as String? ??
-          (hasRisk ? 'Dikkat: Nakit akışında risk tespit edildi.' : 'Nakit akışı normal seyrediyor.');
+      final bool hasRisk = projeksiyon.any(
+        (p) => (p as Map<String, dynamic>)['risk'] == true,
+      );
+      final riskStr =
+          cashflow['risk_uyarisi'] as String? ??
+          (hasRisk
+              ? 'Dikkat: Nakit akışında risk tespit edildi.'
+              : 'Nakit akışı normal seyrediyor.');
 
       // Gecikmiş ödemeler
       final liveOverdue = overdue.map<OverduePaymentMock>((raw) {
         final m = raw as Map<String, dynamic>;
         return OverduePaymentMock(
+          invoiceId: m['fatura_id'] as int?,
           customerName: m['karsi_taraf'] as String? ?? '—',
           amount: '${_fmt((m['tutar'] ?? 0.0) as double)} TL',
           delay: '${m['gecikme_gun'] ?? 0} gün gecikti',
@@ -211,30 +228,78 @@ class _FinancePageState extends ConsumerState<FinancePage> {
 
       // AI insights — gerçek veriden türet
       final liveInsights = <FinanceInsightMock>[];
-      if (liveOverdue.isNotEmpty) {
-        final toplamGeciken = overdue.fold<double>(0, (s, m) => s + ((m as Map<String, dynamic>)['tutar'] as num? ?? 0).toDouble());
-        liveInsights.add(FinanceInsightMock(
-          message: '${liveOverdue.length} gecikmiş tahsilatın toplamı ${_fmt(toplamGeciken)} TL. Hatırlatma gönderilmesi önerilir.',
-          icon: Icons.auto_awesome_outlined,
-        ));
+      Map<String, dynamic>? riskyProjection;
+      for (final item in projeksiyon) {
+        final p = item as Map<String, dynamic>;
+        if (p['risk'] == true) {
+          riskyProjection = p;
+          break;
+        }
       }
-      if (netKar.toDouble() > 0 && marj < 0.15) {
-        liveInsights.add(FinanceInsightMock(
-          message: 'Net kâr marjı ${(marj * 100).toStringAsFixed(1)}% ile düşük seyrediyor. Maliyet optimizasyonu önerilir.',
-          icon: Icons.lightbulb_outline,
-          iconColor: AppColors.amber,
-        ));
+      if (riskyProjection != null) {
+        final riskDay = riskyProjection['gun'];
+        final riskBalance =
+            (riskyProjection['tahmini_bakiye'] as num?)?.toDouble() ?? 0;
+        liveInsights.add(
+          FinanceInsightMock(
+            title: 'Nakit Açığı Yönetimi',
+            message:
+                '$riskDay. gün tahmini bakiye ${_fmt(riskBalance)} TL. Gecikmiş tahsilatları hızlandırıp zorunlu olmayan çıkışları ötelemeniz önerilir.',
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: AppColors.error,
+          ),
+        );
+      } else {
+        liveInsights.add(
+          FinanceInsightMock(
+            title: 'Nakit Açığı Yönetimi',
+            message:
+                '30 günlük projeksiyonda nakit açığı görünmüyor. Dönem sonu tahmini bakiye ${_fmt(donemSonuTahmini)} TL.',
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: AppColors.secondary,
+          ),
+        );
+      }
+      liveInsights.add(
+        FinanceInsightMock(
+          title: 'Marj Analizi',
+          message:
+              'Net kâr marjı ${(marj * 100).toStringAsFixed(1)}%. Gelir ${_fmt(gelir.toDouble())} TL, gider ${_fmt(gider.toDouble())} TL, net kâr ${_fmt(netKar.toDouble())} TL.',
+          icon: Icons.trending_up_outlined,
+          iconColor: marj < 0.15 ? AppColors.amber : AppColors.secondary,
+        ),
+      );
+      if (liveOverdue.isNotEmpty) {
+        final toplamGeciken = overdue.fold<double>(
+          0,
+          (s, m) =>
+              s +
+              ((m as Map<String, dynamic>)['tutar'] as num? ?? 0).toDouble(),
+        );
+        liveInsights.add(
+          FinanceInsightMock(
+            title: 'Tahsilat Hatırlatıcı',
+            message:
+                '${liveOverdue.length} gecikmiş tahsilatın toplamı ${_fmt(toplamGeciken)} TL. Hatırlatma gönderilmesi önerilir.',
+            icon: Icons.auto_awesome_outlined,
+          ),
+        );
       }
       if (kdvOdenecek.toDouble() > 0) {
-        liveInsights.add(FinanceInsightMock(
-          message: 'Bu dönem ${_fmt(kdvOdenecek.toDouble())} TL KDV ödemesi yapılacak.',
-          icon: Icons.auto_awesome_outlined,
-        ));
+        liveInsights.add(
+          FinanceInsightMock(
+            title: 'KDV Nakit Planı',
+            message:
+                'Bu dönem ${_fmt(kdvOdenecek.toDouble())} TL KDV ödemesi yapılacak.',
+            icon: Icons.auto_awesome_outlined,
+          ),
+        );
       }
 
       // Gelir/gider dağılımı — basit hesap
       final toplamGider = gider.toDouble();
-      final satinAlma = (pl['satin_alma_gideri'] as num?)?.toDouble() ?? toplamGider * 0.6;
+      final satinAlma =
+          (pl['satin_alma_gideri'] as num?)?.toDouble() ?? toplamGider * 0.6;
       final giderDagilimi = pl['gider_dagilimi'] as List<dynamic>? ?? [];
       double? parsedPersonel;
       for (final item in giderDagilimi) {
@@ -244,13 +309,17 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           break;
         }
       }
-      final personelGider = (pl['personel_gideri'] as num?)?.toDouble() ?? parsedPersonel ?? toplamGider * 0.2;
+      final personelGider =
+          (pl['personel_gideri'] as num?)?.toDouble() ??
+          parsedPersonel ??
+          toplamGider * 0.2;
       final digerGider = toplamGider - satinAlma - personelGider;
 
       setState(() {
         _plItems = livePlItems;
         _profitMargin = marj.toDouble();
-        _plInsight = 'Gerçek verilere göre net kâr marjı ${(marj * 100).toStringAsFixed(1)}%.';
+        _plInsight =
+            'Gerçek verilere göre net kâr marjı ${(marj * 100).toStringAsFixed(1)}%.';
         _kdvSummary = liveKdv;
         _cashflowMetrics = liveCfMetrics;
         _cashflowPoints = liveCfPoints;
@@ -262,9 +331,24 @@ class _FinancePageState extends ConsumerState<FinancePage> {
 
         if (toplamGider > 0) {
           _expenseDistribution = [
-            DistributionItemMock(label: 'Ürün maliyeti', valueLabel: '%${(satinAlma / toplamGider * 100).round()}', progress: satinAlma / toplamGider, color: AppColors.rose),
-            DistributionItemMock(label: 'Personel', valueLabel: '%${(personelGider / toplamGider * 100).round()}', progress: personelGider / toplamGider, color: AppColors.primary),
-            DistributionItemMock(label: 'Diğer', valueLabel: '%${(digerGider / toplamGider * 100).round()}', progress: digerGider / toplamGider, color: AppColors.amber),
+            DistributionItemMock(
+              label: 'Ürün maliyeti',
+              valueLabel: '%${(satinAlma / toplamGider * 100).round()}',
+              progress: satinAlma / toplamGider,
+              color: AppColors.rose,
+            ),
+            DistributionItemMock(
+              label: 'Personel',
+              valueLabel: '%${(personelGider / toplamGider * 100).round()}',
+              progress: personelGider / toplamGider,
+              color: AppColors.primary,
+            ),
+            DistributionItemMock(
+              label: 'Diğer',
+              valueLabel: '%${(digerGider / toplamGider * 100).round()}',
+              progress: digerGider / toplamGider,
+              color: AppColors.amber,
+            ),
           ];
         }
         _loading = false;
@@ -298,13 +382,20 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
-                setState(() { _loading = true; _error = null; });
+                setState(() {
+                  _loading = true;
+                  _error = null;
+                });
                 _fetchFinanceData();
               },
               icon: const Icon(Icons.refresh),
@@ -388,11 +479,21 @@ class _FinancePageState extends ConsumerState<FinancePage> {
             _kdvRow('Son Ödeme Tarihi', s.deadline),
             _kdvRow('Durum', s.statusLabel),
             const SizedBox(height: 8),
-            Text(s.warning, style: const TextStyle(fontSize: 13, color: AppColors.mutedText, fontStyle: FontStyle.italic)),
+            Text(
+              s.warning,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.mutedText,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Kapat'),
+          ),
         ],
       ),
     );
@@ -404,8 +505,14 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.mutedText)),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppColors.mutedText),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -430,16 +537,24 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                       dense: true,
                       title: Text(m.title),
                       subtitle: Text('${m.source} • ${m.timestamp}'),
-                      trailing: Text(m.amount, style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: m.tone == StatusTone.success ? AppColors.secondary : AppColors.error,
-                      )),
+                      trailing: Text(
+                        m.amount,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: m.tone == StatusTone.success
+                              ? AppColors.secondary
+                              : AppColors.error,
+                        ),
+                      ),
                     );
                   },
                 ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Kapat'),
+          ),
         ],
       ),
     );
@@ -448,22 +563,35 @@ class _FinancePageState extends ConsumerState<FinancePage> {
   Future<void> _applyFinanceInsight(String msg) async {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('AI önerisi analiz ediliyor...'), duration: Duration(seconds: 1)));
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('AI önerisi analiz ediliyor...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
     try {
       final result = await ApiService.instance.sendChat(
         message: 'Bu finans önerisini detaylandır ve somut adımlar öner: $msg',
       );
       if (!mounted) return;
-      final response = result.response.isNotEmpty ? result.response : 'Detay alınamadı.';
+      final response = result.response.isNotEmpty
+          ? result.response
+          : 'Detay alınamadı.';
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('AI Öneri Detayı'),
           content: SingleChildScrollView(
-            child: SelectableText(response, style: const TextStyle(fontSize: 14, height: 1.5)),
+            child: SelectableText(
+              response,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Kapat'),
+            ),
           ],
         ),
       );
@@ -476,21 +604,26 @@ class _FinancePageState extends ConsumerState<FinancePage> {
     }
   }
 
-  Future<void> _showReminderMessage(String customerName) async {
+  Future<void> _showReminderMessage(OverduePaymentMock payment) async {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$customerName için hatırlatma taslağı oluşturuluyor...'),
+          content: Text(
+            '${payment.customerName} için hatırlatma taslağı oluşturuluyor...',
+          ),
           duration: const Duration(seconds: 1),
         ),
       );
     try {
       final result = await ApiService.instance.sendChat(
-        message: '$customerName için ödeme hatırlatma mesajı yaz. Resmi ama nazik bir dille, ödeme tutarını ve gecikme süresini belirt.',
+        message:
+            '${payment.customerName} için ödeme hatırlatma mesajı yaz. Resmi ama nazik bir dille, ödeme tutarını ve gecikme süresini belirt. Tutar: ${payment.amount}. Gecikme: ${payment.delay}.',
       );
       if (!mounted) return;
-      final response = result.response.isNotEmpty ? result.response : 'Taslak oluşturulamadı.';
+      final response = result.response.isNotEmpty
+          ? result.response
+          : 'Taslak oluşturulamadı.';
 
       // Hatırlatma taslağı dialog'u — tarih seçici ve kaydet butonu ile
       DateTime selectedDate = DateTime.now().add(const Duration(days: 3));
@@ -501,9 +634,18 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           builder: (ctx, setDialogState) => AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 22),
+                const Icon(
+                  Icons.notifications_active_outlined,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text('$customerName — Hatırlatma', style: const TextStyle(fontSize: 16))),
+                Expanded(
+                  child: Text(
+                    '${payment.customerName} — Hatırlatma',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -511,7 +653,10 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Hatırlatma Metni:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const Text(
+                    'Hatırlatma Metni:',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -521,10 +666,16 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.outline),
                     ),
-                    child: SelectableText(response, style: const TextStyle(fontSize: 13, height: 1.5)),
+                    child: SelectableText(
+                      response,
+                      style: const TextStyle(fontSize: 13, height: 1.5),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Hatırlatma Tarihi:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const Text(
+                    'Hatırlatma Tarihi:',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: () async {
@@ -541,21 +692,37 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                     },
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.outline),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primary),
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             '${selectedDate.day.toString().padLeft(2, '0')}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.year}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const Spacer(),
-                          const Text('Değiştir', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                          const Text(
+                            'Değiştir',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -573,23 +740,42 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                   Navigator.of(ctx).pop();
                   // Backend'e uyarı/hatırlatma olarak kaydet
                   try {
-                    await ApiService.instance.sendChat(
-                      message: 'SYSTEM: $customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihinde ödeme hatırlatması oluştur.',
+                    await ApiService.instance.createPaymentReminder(
+                      customerName: payment.customerName,
+                      reminderDate: selectedDate,
+                      draftText: response,
+                      amount: payment.amount,
+                      delay: payment.delay,
                     );
-                  } catch (_) {}
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(
+                            content: Text('Hatırlatma kaydedilemedi: $e'),
+                          ),
+                        );
+                    }
+                    return;
+                  }
                   if (mounted) {
                     ScaffoldMessenger.of(context)
                       ..hideCurrentSnackBar()
-                      ..showSnackBar(SnackBar(
-                        content: Text(
-                          '$customerName için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihine hatırlatma kaydedildi.',
+                      ..showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${payment.customerName} için ${selectedDate.day}.${selectedDate.month}.${selectedDate.year} tarihine hatırlatma kaydedildi.',
+                          ),
                         ),
-                      ));
+                      );
                   }
                 },
                 icon: const Icon(Icons.save_outlined, size: 18),
                 label: const Text('Hatırlatmayı Kaydet'),
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
               ),
             ],
           ),
@@ -599,12 +785,13 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('Hatırlatma taslağı oluşturulamadı: $e')));
+          ..showSnackBar(
+            SnackBar(content: Text('Hatırlatma taslağı oluşturulamadı: $e')),
+          );
       }
     }
   }
 }
-
 
 class _FinanceIntroCard extends StatelessWidget {
   const _FinanceIntroCard();
@@ -650,7 +837,11 @@ class _FinanceIntroCard extends StatelessWidget {
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.auto_awesome, color: AppColors.secondaryContainer, size: 20),
+                Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.secondaryContainer,
+                  size: 20,
+                ),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -688,13 +879,13 @@ class _FinanceRiskStrip extends StatelessWidget {
     final nakitTone = profitMargin < 0.10
         ? StatusTone.danger
         : profitMargin < 0.20
-            ? StatusTone.warning
-            : StatusTone.success;
+        ? StatusTone.warning
+        : StatusTone.success;
     final nakitLabel = profitMargin < 0.10
         ? 'Yüksek'
         : profitMargin < 0.20
-            ? 'Orta'
-            : 'Düşük';
+        ? 'Orta'
+        : 'Düşük';
 
     final kdvTone = kdvPayable.contains('0') && kdvPayable.length <= 3
         ? StatusTone.success
@@ -703,13 +894,17 @@ class _FinanceRiskStrip extends StatelessWidget {
     final tahsilatTone = overdueCount == 0
         ? StatusTone.success
         : overdueCount > 3
-            ? StatusTone.danger
-            : StatusTone.warning;
+        ? StatusTone.danger
+        : StatusTone.warning;
 
     final items = [
       ('Nakit Riski', nakitLabel, nakitTone),
       ('KDV Durumu', kdvPayable == '0 TL' ? 'Temiz' : 'Takip', kdvTone),
-      ('Tahsilat', overdueCount > 0 ? '$overdueCount Geciken' : 'Temiz', tahsilatTone),
+      (
+        'Tahsilat',
+        overdueCount > 0 ? '$overdueCount Geciken' : 'Temiz',
+        tahsilatTone,
+      ),
     ];
 
     return Row(

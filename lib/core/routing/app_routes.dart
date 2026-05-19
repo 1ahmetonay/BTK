@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/alerts/presentation/alerts_page.dart';
+import '../../features/archive/presentation/archive_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/documents/presentation/documents_page.dart';
@@ -28,6 +29,7 @@ class AppRoutes {
 
   static const dashboard = '/';
   static const documents = '/documents';
+  static const archive = '/archive';
   static const stock = '/stock';
   static const finance = '/finance';
   static const chat = '/chat';
@@ -47,6 +49,12 @@ class AppRoutes {
       title: 'Belge İşleme',
       subtitle: 'Fatura ve evrak akışı',
       icon: Icons.description_outlined,
+    ),
+    AppRouteItem(
+      route: archive,
+      title: 'Arşiv Defteri',
+      subtitle: 'E-faturalar ve işlenen belgeler',
+      icon: Icons.archive_outlined,
     ),
     AppRouteItem(
       route: stock,
@@ -101,12 +109,10 @@ class AppRoutes {
     return items.firstWhere((item) => item.route == route).subtitle;
   }
 
-  static Widget pageFor(
-    String route, {
-    ValueChanged<String>? onNavigate,
-  }) {
+  static Widget pageFor(String route, {ValueChanged<String>? onNavigate}) {
     return switch (route) {
       documents => const DocumentsPage(),
+      archive => const ArchivePage(),
       stock => const StockPage(),
       finance => const FinancePage(),
       chat => const ChatPage(),

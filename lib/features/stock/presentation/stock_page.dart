@@ -21,6 +21,9 @@ class StockPage extends ConsumerStatefulWidget {
 
 class _StockPageState extends ConsumerState<StockPage> {
   String _selectedFilter = 'Tümü';
+  String _searchQuery = '';
+  String? _recommendingSku;
+  late final TextEditingController _searchController;
 
   List<StockSummaryMock> _summaries = [];
   List<ProductStockMock> _criticalProducts = [];
@@ -37,7 +40,14 @@ class _StockPageState extends ConsumerState<StockPage> {
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     _fetchStockData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchStockData() async {
@@ -121,8 +131,8 @@ class _StockPageState extends ConsumerState<StockPage> {
           statusTone: durumTon == 'danger'
               ? StatusTone.danger
               : durumTon == 'warning'
-                  ? StatusTone.warning
-                  : StatusTone.success,
+              ? StatusTone.warning
+              : StatusTone.success,
           daysRemaining: '${m['kalan_gun'] ?? '?'}',
         );
       }).toList();
@@ -169,7 +179,9 @@ class _StockPageState extends ConsumerState<StockPage> {
         );
       }
       if (liveSuggestions.isEmpty && liveAllProducts.isNotEmpty) {
-        liveSuggestions.add('Tüm ürün stokları normal seviyelerde. Kritik ürün bulunmuyor.');
+        liveSuggestions.add(
+          'Tüm ürün stokları normal seviyelerde. Kritik ürün bulunmuyor.',
+        );
       }
 
       // ─── ABC analizi → StockInsights ───
@@ -187,14 +199,17 @@ class _StockPageState extends ConsumerState<StockPage> {
         StockInsightMock(
           title: 'ABC Analizi',
           description: 'A grubu yüksek ciro etkisine sahip ürünler',
-          valueLabel: 'A %${(aPct * 100).round()} | B %${(bPct * 100).round()} | C %${((1 - aPct - bPct) * 100).round()}',
+          valueLabel:
+              'A %${(aPct * 100).round()} | B %${(bPct * 100).round()} | C %${((1 - aPct - bPct) * 100).round()}',
           progress: aPct.clamp(0.05, 0.95),
           color: AppColors.primary,
         ),
         StockInsightMock(
           title: 'Kritik Oran',
           description: 'Kritik stok ürünlerinin toplam oranı',
-          valueLabel: toplam > 0 ? '%${(kritikSayi / toplam * 100).round()}' : '%0',
+          valueLabel: toplam > 0
+              ? '%${(kritikSayi / toplam * 100).round()}'
+              : '%0',
           progress: toplam > 0 ? (kritikSayi / toplam).clamp(0.05, 0.95) : 0.05,
           color: AppColors.rose,
         ),
@@ -214,14 +229,16 @@ class _StockPageState extends ConsumerState<StockPage> {
       if (supplierSku != null) {
         try {
           final firstSku = supplierSku;
-          final supplierData =
-              await ApiService.instance.getSupplierComparison(firstSku);
+          final supplierData = await ApiService.instance.getSupplierComparison(
+            firstSku,
+          );
           if (mounted) {
             final tedarikciler =
                 supplierData['tedarikciler'] as List<dynamic>? ?? [];
             if (tedarikciler.isNotEmpty) {
-              final liveSuppliers =
-                  tedarikciler.map<SupplierComparisonMock>((raw) {
+              final liveSuppliers = tedarikciler.map<SupplierComparisonMock>((
+                raw,
+              ) {
                 final s = raw as Map<String, dynamic>;
                 return SupplierComparisonMock(
                   supplierName: s['tedarikci_adi'] as String? ?? '—',
@@ -234,8 +251,10 @@ class _StockPageState extends ConsumerState<StockPage> {
               // En ucuz ve en hızlıyı bul
               String cheapest = liveSuppliers.first.supplierName;
               String fastest = liveSuppliers.first.supplierName;
-              double minPrice = double.tryParse(
-                      liveSuppliers.first.price.replaceAll(' TL', '')) ??
+              double minPrice =
+                  double.tryParse(
+                    liveSuppliers.first.price.replaceAll(' TL', ''),
+                  ) ??
                   999999;
               for (final s in liveSuppliers) {
                 final p =
@@ -245,17 +264,20 @@ class _StockPageState extends ConsumerState<StockPage> {
                   cheapest = s.supplierName;
                 }
                 // leadTime "3 gün" gibi, sayıyı parse et
-                final lt = int.tryParse(
-                        s.leadTime.replaceAll(RegExp(r'[^0-9]'), '')) ??
+                final lt =
+                    int.tryParse(
+                      s.leadTime.replaceAll(RegExp(r'[^0-9]'), ''),
+                    ) ??
                     999;
-                final ft = int.tryParse(
-                        fastest == s.supplierName
-                            ? '999'
-                            : liveSuppliers
-                                .firstWhere(
-                                    (x) => x.supplierName == fastest)
+                final ft =
+                    int.tryParse(
+                      fastest == s.supplierName
+                          ? '999'
+                          : liveSuppliers
+                                .firstWhere((x) => x.supplierName == fastest)
                                 .leadTime
-                                .replaceAll(RegExp(r'[^0-9]'), '')) ??
+                                .replaceAll(RegExp(r'[^0-9]'), ''),
+                    ) ??
                     999;
                 if (lt < ft) fastest = s.supplierName;
               }
@@ -302,6 +324,34 @@ class _StockPageState extends ConsumerState<StockPage> {
     return val.toStringAsFixed(0);
   }
 
+  List<ProductStockMock> _filteredProducts() {
+    final query = _normalizeSearch(_searchQuery);
+    return _allProducts.where((product) {
+      final matchesFilter =
+          _selectedFilter == 'Tümü' || product.statusLabel == _selectedFilter;
+      if (!matchesFilter) return false;
+      if (query.isEmpty) return true;
+
+      final searchable = _normalizeSearch(
+        '${product.productName} ${product.sku} ${product.category}',
+      );
+      return searchable.contains(query);
+    }).toList();
+  }
+
+  String _normalizeSearch(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c');
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -313,13 +363,20 @@ class _StockPageState extends ConsumerState<StockPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
-                setState(() { _loading = true; _error = null; });
+                setState(() {
+                  _loading = true;
+                  _error = null;
+                });
                 _fetchStockData();
               },
               icon: const Icon(Icons.refresh),
@@ -331,6 +388,8 @@ class _StockPageState extends ConsumerState<StockPage> {
       );
     }
 
+    final visibleProducts = _filteredProducts();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -340,6 +399,7 @@ class _StockPageState extends ConsumerState<StockPage> {
         const SizedBox(height: 16),
         CriticalStockCard(
           products: _criticalProducts.take(3).toList(),
+          recommendingSku: _recommendingSku,
           onRecommend: _showRecommendMessage,
         ),
         const SizedBox(height: 16),
@@ -347,12 +407,14 @@ class _StockPageState extends ConsumerState<StockPage> {
         const SizedBox(height: 16),
         _StockSearchAndFilters(
           selectedFilter: _selectedFilter,
+          searchController: _searchController,
           onSelected: (filter) => setState(() => _selectedFilter = filter),
+          onSearchChanged: (query) => setState(() => _searchQuery = query),
         ),
         const SizedBox(height: 16),
         const _StockSectionTitle('Ürün Stok Durumu'),
         const SizedBox(height: 8),
-        ProductStockTableCard(products: _allProducts),
+        ProductStockTableCard(products: visibleProducts),
         const SizedBox(height: 16),
         StockMovementsCard(movements: _movements),
         const SizedBox(height: 16),
@@ -367,30 +429,34 @@ class _StockPageState extends ConsumerState<StockPage> {
     );
   }
 
-  Future<void> _showRecommendMessage(String productName) async {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('$productName için tedarik önerisi hazırlanıyor...'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
+  Future<void> _showRecommendMessage(ProductStockMock product) async {
+    if (_recommendingSku != null) return;
+
+    setState(() => _recommendingSku = product.sku);
     try {
       final result = await ApiService.instance.sendChat(
-        message: '$productName için tedarik önerisi ver. Mevcut stok durumunu, en uygun tedarikçiyi ve sipariş miktarını öner.',
+        message:
+            'SKU ${product.sku} (${product.productName}) için tedarik önerisi ver. Mevcut stok ${product.currentStock}, minimum stok ${product.minimumStock}. En uygun tedarikçiyi ve sipariş miktarını öner.',
       );
       if (!mounted) return;
-      final response = result.response.isNotEmpty ? result.response : 'Öneri alınamadı.';
+      final response = result.response.isNotEmpty
+          ? result.response
+          : 'Öneri alınamadı.';
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('$productName — Tedarik Önerisi'),
+          title: Text('${product.productName} — Tedarik Önerisi'),
           content: SingleChildScrollView(
-            child: Text(response, style: const TextStyle(fontSize: 14, height: 1.5)),
+            child: Text(
+              response,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Kapat'),
+            ),
           ],
         ),
       );
@@ -398,12 +464,17 @@ class _StockPageState extends ConsumerState<StockPage> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('Tedarik önerisi alınamadı: $e')));
+          ..showSnackBar(
+            SnackBar(content: Text('Tedarik önerisi alınamadı: $e')),
+          );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _recommendingSku = null);
       }
     }
   }
 }
-
 
 class _StockSectionTitle extends StatelessWidget {
   const _StockSectionTitle(this.title);
@@ -528,9 +599,7 @@ class _StockSummaryTile extends StatelessWidget {
         color: highlighted ? AppColors.highlightedSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: highlighted
-              ? AppColors.errorContainer
-              : AppColors.outline,
+          color: highlighted ? AppColors.errorContainer : AppColors.outline,
         ),
       ),
       child: Column(
@@ -544,9 +613,7 @@ class _StockSummaryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: highlighted
-                  ? AppColors.error
-                  : AppColors.mutedText,
+              color: highlighted ? AppColors.error : AppColors.mutedText,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -557,9 +624,7 @@ class _StockSummaryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: highlighted
-                  ? AppColors.error
-                  : AppColors.primary,
+              color: highlighted ? AppColors.error : AppColors.primary,
               fontSize: 19,
               fontWeight: FontWeight.w900,
             ),
@@ -593,11 +658,15 @@ class _StockSummaryTile extends StatelessWidget {
 class _StockSearchAndFilters extends StatelessWidget {
   const _StockSearchAndFilters({
     required this.selectedFilter,
+    required this.searchController,
     required this.onSelected,
+    required this.onSearchChanged,
   });
 
   final String selectedFilter;
+  final TextEditingController searchController;
   final ValueChanged<String> onSelected;
+  final ValueChanged<String> onSearchChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -607,6 +676,8 @@ class _StockSearchAndFilters extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
+          controller: searchController,
+          onChanged: onSearchChanged,
           decoration: InputDecoration(
             hintText: 'Ürün veya SKU ara',
             prefixIcon: const Icon(Icons.search, color: AppColors.neutral),

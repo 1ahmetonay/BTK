@@ -5,7 +5,7 @@ E-fatura üretimi, listeleme ve DB kaydı.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,6 +184,34 @@ async def list_invoices(
         }
         for f in faturalar
     ]
+
+
+@router.patch("/{fatura_id}/payment-status")
+async def update_invoice_payment_status(
+    fatura_id: int,
+    odeme_durumu: str = Query(..., pattern="^(bekliyor|odendi|gecikti)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fatura ödeme durumunu güncelle."""
+    result = await db.execute(select(Fatura).where(Fatura.id == fatura_id))
+    fatura = result.scalar_one_or_none()
+    if not fatura:
+        raise HTTPException(status_code=404, detail="Fatura bulunamadı")
+
+    from datetime import date
+
+    fatura.odeme_durumu = odeme_durumu
+    fatura.odeme_tarihi = date.today() if odeme_durumu == "odendi" else None
+    await db.commit()
+
+    return {
+        "id": fatura.id,
+        "fatura_no": fatura.fatura_no,
+        "odeme_durumu": fatura.odeme_durumu,
+        "odeme_tarihi": fatura.odeme_tarihi.isoformat()
+        if fatura.odeme_tarihi
+        else None,
+    }
 
 
 @router.post("/generate-demo")

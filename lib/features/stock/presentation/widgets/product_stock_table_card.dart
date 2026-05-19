@@ -17,16 +17,31 @@ class ProductStockTableCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.outline),
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: products.length,
-        separatorBuilder: (_, __) =>
-            const Divider(height: 1, thickness: 1, color: AppColors.outlineSoft),
-        itemBuilder: (context, index) {
-          return _ProductCard(product: products[index]);
-        },
-      ),
+      child: products.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(18),
+              child: Text(
+                'Bu arama veya filtreye uygun ürün bulunamadı.',
+                style: TextStyle(
+                  color: AppColors.mutedText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          : ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: products.length,
+              separatorBuilder: (_, __) => const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.outlineSoft,
+              ),
+              itemBuilder: (context, index) {
+                return _ProductCard(product: products[index]);
+              },
+            ),
     );
   }
 }

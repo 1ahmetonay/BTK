@@ -12,11 +12,13 @@ class OverduePaymentsCard extends StatelessWidget {
   });
 
   final List<OverduePaymentMock> payments;
-  final ValueChanged<String> onDraftReminder;
+  final ValueChanged<OverduePaymentMock> onDraftReminder;
 
   @override
   Widget build(BuildContext context) {
-    final visiblePayments = payments.take(2).toList();
+    final maxDelay = payments
+        .map((payment) => int.tryParse(payment.delay.split(' ').first) ?? 0)
+        .fold<int>(0, (max, delay) => delay > max ? delay : max);
 
     return Container(
       decoration: BoxDecoration(
@@ -26,17 +28,16 @@ class OverduePaymentsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const _Header(),
+          _Header(count: payments.length, maxDelay: maxDelay),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: visiblePayments.length,
+            itemCount: payments.length,
             separatorBuilder: (_, __) =>
                 const Divider(height: 1, color: AppColors.outlineSoft),
             itemBuilder: (context, index) => _PaymentRow(
-              payment: visiblePayments[index],
-              onReminder: () =>
-                  onDraftReminder(visiblePayments[index].customerName),
+              payment: payments[index],
+              onReminder: () => onDraftReminder(payments[index]),
             ),
           ),
           Container(
@@ -49,7 +50,16 @@ class OverduePaymentsCard extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: FilledButton.icon(
-                onPressed: () => onDraftReminder('Vadesi geçen tahsilatlar'),
+                onPressed: payments.isEmpty
+                    ? null
+                    : () => onDraftReminder(
+                        OverduePaymentMock(
+                          customerName: 'Vadesi geçen tahsilatlar',
+                          amount: '${payments.length} tahsilat',
+                          delay: '$maxDelay gün gecikti',
+                          actionLabel: 'Hatırlatma öner',
+                        ),
+                      ),
                 icon: const Icon(Icons.description_outlined, size: 18),
                 label: const Text('Hatırlatma Taslağı Oluştur'),
                 style: FilledButton.styleFrom(
@@ -73,7 +83,10 @@ class OverduePaymentsCard extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.count, required this.maxDelay});
+
+  final int count;
+  final int maxDelay;
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +96,9 @@ class _Header extends StatelessWidget {
         border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Text(
               'VADESİ GEÇEN TAHSİLATLAR',
               style: TextStyle(
@@ -96,7 +109,10 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          StatusBadge(label: '6 GÜN GECİKME', tone: StatusTone.warning),
+          StatusBadge(
+            label: count == 0 ? 'TEMİZ' : '$maxDelay GÜN GECİKME',
+            tone: count == 0 ? StatusTone.success : StatusTone.warning,
+          ),
         ],
       ),
     );

@@ -133,8 +133,11 @@ class ApiService {
   }
 
   /// Gecikmiş ödemeler
-  Future<List<dynamic>> getOverduePayments() async {
-    final response = await _dio.get('/api/v1/finance/overdue');
+  Future<List<dynamic>> getOverduePayments({String? type}) async {
+    final response = await _dio.get(
+      '/api/v1/finance/overdue',
+      queryParameters: {if (type != null) 'tur': type},
+    );
     return response.data as List<dynamic>;
   }
 
@@ -150,11 +153,17 @@ class ApiService {
   // ─── Belge İşleme ─────────────────────────────────────────────────
 
   /// Fatura/belge yükle ve işle
-  Future<Map<String, dynamic>> processDocument(List<int> fileBytes, String fileName) async {
+  Future<Map<String, dynamic>> processDocument(
+    List<int> fileBytes,
+    String fileName,
+  ) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
     });
-    final response = await _dio.post('/api/v1/document/process', data: formData);
+    final response = await _dio.post(
+      '/api/v1/document/process',
+      data: formData,
+    );
     return response.data as Map<String, dynamic>;
   }
 
@@ -195,11 +204,17 @@ class ApiService {
   // ─── İK / Puantaj ─────────────────────────────────────────────────
 
   /// Puantaj belgesi yükle ve işle
-  Future<Map<String, dynamic>> processTimesheet(List<int> fileBytes, String fileName) async {
+  Future<Map<String, dynamic>> processTimesheet(
+    List<int> fileBytes,
+    String fileName,
+  ) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
     });
-    final response = await _dio.post('/api/v1/hr/timesheet/process', data: formData);
+    final response = await _dio.post(
+      '/api/v1/hr/timesheet/process',
+      data: formData,
+    );
     return response.data as Map<String, dynamic>;
   }
 
@@ -230,13 +245,13 @@ class ApiService {
   // ─── Uyarılar ──────────────────────────────────────────────────────
 
   /// Tüm uyarılar
-  Future<List<dynamic>> getAlerts({String? oncelik, bool okunmamis = false}) async {
+  Future<List<dynamic>> getAlerts({
+    String? oncelik,
+    bool okunmamis = false,
+  }) async {
     final params = <String, dynamic>{'okunmamis': okunmamis};
     if (oncelik != null) params['oncelik'] = oncelik;
-    final response = await _dio.get(
-      '/api/v1/alerts',
-      queryParameters: params,
-    );
+    final response = await _dio.get('/api/v1/alerts', queryParameters: params);
     return response.data as List<dynamic>;
   }
 
@@ -256,6 +271,28 @@ class ApiService {
     await _dio.put('/api/v1/alerts/$alertId/action');
   }
 
+  /// Ödeme hatırlatma taslağını tarihli uyarı olarak kaydet
+  Future<Map<String, dynamic>> createPaymentReminder({
+    required String customerName,
+    required DateTime reminderDate,
+    required String draftText,
+    String? amount,
+    String? delay,
+  }) async {
+    final response = await _dio.post(
+      '/api/v1/alerts/reminders',
+      data: {
+        'customer_name': customerName,
+        'reminder_date':
+            '${reminderDate.year.toString().padLeft(4, '0')}-${reminderDate.month.toString().padLeft(2, '0')}-${reminderDate.day.toString().padLeft(2, '0')}',
+        'draft_text': draftText,
+        if (amount != null) 'amount': amount,
+        if (delay != null) 'delay': delay,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   // ─── Sağlık Kontrolü ──────────────────────────────────────────────
 
   /// Backend bağlantı kontrolü
@@ -271,14 +308,40 @@ class ApiService {
   // ─── E-Fatura ─────────────────────────────────────────────────────
 
   /// E-Fatura üret (UBL-TR XML + QR + PDF)
-  Future<Map<String, dynamic>> generateEfatura(Map<String, dynamic> invoiceData) async {
-    final response = await _dio.post('/api/v1/invoice/generate', data: invoiceData);
+  Future<Map<String, dynamic>> generateEfatura(
+    Map<String, dynamic> invoiceData,
+  ) async {
+    final response = await _dio.post(
+      '/api/v1/invoice/generate',
+      data: invoiceData,
+    );
     return response.data as Map<String, dynamic>;
   }
 
   /// Demo e-fatura üret
   Future<Map<String, dynamic>> generateDemoEfatura() async {
     final response = await _dio.post('/api/v1/invoice/generate-demo');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Arşiv için faturaları listele
+  Future<List<dynamic>> getInvoiceArchive({int limit = 200}) async {
+    final response = await _dio.get(
+      '/api/v1/invoice/list',
+      queryParameters: {'limit': limit},
+    );
+    return response.data as List<dynamic>;
+  }
+
+  /// Fatura ödeme durumunu güncelle
+  Future<Map<String, dynamic>> updateInvoicePaymentStatus({
+    required int invoiceId,
+    required String status,
+  }) async {
+    final response = await _dio.patch(
+      '/api/v1/invoice/$invoiceId/payment-status',
+      queryParameters: {'odeme_durumu': status},
+    );
     return response.data as Map<String, dynamic>;
   }
 
@@ -291,7 +354,10 @@ class ApiService {
   }
 
   /// What-If fiyat simülasyonu
-  Future<Map<String, dynamic>> simulatePriceChange(String sku, double changePct) async {
+  Future<Map<String, dynamic>> simulatePriceChange(
+    String sku,
+    double changePct,
+  ) async {
     final response = await _dio.post(
       '/api/v1/stock/$sku/simulate',
       data: {'price_change_pct': changePct},
@@ -316,13 +382,11 @@ class ChatResult {
   });
 
   factory ChatResult.fromJson(Map<String, dynamic> json) => ChatResult(
-        response: json['response'] as String? ?? '',
-        conversationId: json['conversation_id'] as String? ?? '',
-        toolsUsed:
-            (json['tools_used'] as List?)?.map((e) => e.toString()).toList() ??
-                [],
-        thinkingSteps: (json['thinking_steps'] as List?)
-                ?.cast<Map<String, dynamic>>() ??
-            [],
-      );
+    response: json['response'] as String? ?? '',
+    conversationId: json['conversation_id'] as String? ?? '',
+    toolsUsed:
+        (json['tools_used'] as List?)?.map((e) => e.toString()).toList() ?? [],
+    thinkingSteps:
+        (json['thinking_steps'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+  );
 }

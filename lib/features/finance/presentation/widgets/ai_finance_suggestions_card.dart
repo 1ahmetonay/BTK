@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import '../finance_mock_data.dart';
 
 class AiFinanceSuggestionsCard extends StatelessWidget {
-  const AiFinanceSuggestionsCard({required this.insights, this.onApply, super.key});
+  const AiFinanceSuggestionsCard({
+    required this.insights,
+    this.onApply,
+    super.key,
+  });
 
   final List<FinanceInsightMock> insights;
   final ValueChanged<String>? onApply;
@@ -38,7 +42,11 @@ class AiFinanceSuggestionsCard extends StatelessWidget {
             itemCount: insights.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              return _AiSuggestionCard(insight: insights[index], index: index, onApply: onApply);
+              return _AiSuggestionCard(
+                insight: insights[index],
+                index: index,
+                onApply: onApply,
+              );
             },
           ),
         ),
@@ -48,7 +56,11 @@ class AiFinanceSuggestionsCard extends StatelessWidget {
 }
 
 class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard({required this.insight, required this.index, this.onApply});
+  const _AiSuggestionCard({
+    required this.insight,
+    required this.index,
+    this.onApply,
+  });
 
   final FinanceInsightMock insight;
   final int index;
@@ -61,7 +73,9 @@ class _AiSuggestionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: const Border(left: BorderSide(color: AppColors.secondary, width: 4)),
+        border: const Border(
+          left: BorderSide(color: AppColors.secondary, width: 4),
+        ),
         borderRadius: const BorderRadius.all(Radius.circular(12)),
         boxShadow: [
           BoxShadow(
@@ -75,7 +89,7 @@ class _AiSuggestionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _title,
+            insight.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -99,7 +113,7 @@ class _AiSuggestionCard extends StatelessWidget {
             width: double.infinity,
             height: 38,
             child: FilledButton(
-              onPressed: () => onApply?.call(_message),
+              onPressed: () => onApply?.call(insight.message),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
@@ -119,21 +133,5 @@ class _AiSuggestionCard extends StatelessWidget {
     );
   }
 
-  String get _title {
-    return switch (index) {
-      0 => 'Nakit Açığı Yönetimi',
-      1 => 'Marj Analizi',
-      _ => 'Tahsilat Hatırlatıcı',
-    };
-  }
-
-  String get _message {
-    return switch (index) {
-      0 =>
-        '14. gün beklenen nakit açığı için tedarikçi ödemelerinizi 5 gün ötelemeniz önerilir.',
-      1 =>
-        'Lojistik maliyetleriniz geçen aya göre %18 arttı. Alternatif kurye hizmetlerini inceleyin.',
-      _ => insight.message,
-    };
-  }
+  String get _message => insight.message;
 }

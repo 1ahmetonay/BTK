@@ -212,15 +212,19 @@ class FinanceService:
             "uyari": kalan_gun <= 5,
         }
 
-    async def get_overdue_payments(self, db: AsyncSession) -> list[dict]:
+    async def get_overdue_payments(self, db: AsyncSession, tur: Optional[str] = None) -> list[dict]:
         """Gecikmiş ödemeler."""
         today = date.today()
+        filters = [
+            Fatura.odeme_durumu == "gecikti",
+            Fatura.vade_tarihi < today,
+        ]
+        if tur:
+            filters.append(Fatura.tur == tur)
+
         result = await db.execute(
             select(Fatura).where(
-                and_(
-                    Fatura.odeme_durumu == "gecikti",
-                    Fatura.vade_tarihi < today,
-                )
+                and_(*filters)
             ).order_by(Fatura.vade_tarihi.asc())
         )
         invoices = result.scalars().all()
