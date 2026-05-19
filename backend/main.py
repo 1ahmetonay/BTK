@@ -149,30 +149,28 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 
 # ─── CORS ─────────────────────────────────────────────────────────────
-# Development: tüm origin'lere izin ver (Flutter web debug rastgele port kullanır)
-_app_env = os.getenv("APP_ENV", "development")
-if _app_env == "development":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+_cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+if _cors_origins_raw:
+    _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
 else:
-    _cors_origins_raw = os.getenv("CORS_ORIGINS", "")
-    if not _cors_origins_raw:
-        logger.warning("Production modda CORS_ORIGINS tanımlanmamış! Varsayılan: sadece aynı origin.")
-        _cors_origins = []
-    else:
-        _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_cors_origins,
-        allow_credentials=bool(_cors_origins),
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    _cors_origins = [
+        "https://1ahmetonay.github.io",
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "http://localhost:8080",
+        "http://localhost:5173",
+    ]
+
+if APP_ENV == "development":
+    _cors_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ─── Router'ları Kaydet ───────────────────────────────────────────────

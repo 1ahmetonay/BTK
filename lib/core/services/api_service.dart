@@ -12,16 +12,17 @@ class ApiService {
   // Backend URL — akıllı platform algılama
   static String get _baseUrl {
     // 1. dart-define ile override edilebilir (en yüksek öncelik)
+    //    flutter build web --dart-define=API_BASE_URL=https://your-backend.onrender.com
     const envUrl = String.fromEnvironment('API_BASE_URL');
     if (envUrl.isNotEmpty) return envUrl;
 
-    // 2. Web: tarayıcının mevcut origin'ini kullan (same-origin, CORS sorunu yok)
-    //    Eğer aynı sunucudan serve ediliyorsa (flutter build web → backend static)
-    //    boş baseUrl = relative path kullanır
+    // 2. Web platformu
     if (kIsWeb) {
       // Debug modda (flutter run -d chrome): localhost:8000'e bağlan
       if (kDebugMode) return 'http://localhost:8000';
-      // Release modda: aynı sunucudan serve edildiği için boş = same origin
+      // Release modda: dart-define verilmediyse backend bağlantısı yok.
+      // Boş string dönerse istekler GitHub Pages'e gider ve 404 alır.
+      // Bu durum yalnızca backend henüz deploy edilmemişse oluşur.
       return '';
     }
 

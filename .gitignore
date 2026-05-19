@@ -48,7 +48,21 @@ venv/
 **/.env
 **/.env.*
 !**/.env.example
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Claude Code
+.claude/
