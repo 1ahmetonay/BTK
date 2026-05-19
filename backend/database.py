@@ -47,7 +47,7 @@ class Urun(Base):
     son_alis_maliyeti = Column(Float, nullable=True)
     mevcut_stok = Column(Integer, default=0)
     aktif = Column(Boolean, default=True)
-    olusturma_tarihi = Column(DateTime, default=_utcnow)
+    olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
 
     hareketler = relationship("StokHareket", back_populates="urun", lazy="raise")
     fiyat_gecmisi = relationship("FiyatGecmisi", back_populates="urun", lazy="raise")
@@ -61,7 +61,7 @@ class StokHareket(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     urun_id = Column(Integer, ForeignKey("urunler.id"), nullable=False, index=True)
-    tarih = Column(DateTime, default=_utcnow)
+    tarih = Column(DateTime(timezone=True), default=_utcnow)
     miktar = Column(Float, nullable=False)
     hareket_tipi = Column(String(30))
     kaynak_belge_id = Column(Integer, nullable=True)
@@ -138,7 +138,7 @@ class Fatura(Base):
     belge_url = Column(Text, nullable=True)
     gemini_raw_json = Column(Text, nullable=True)
     islendi = Column(Boolean, default=False)
-    olusturma_tarihi = Column(DateTime, default=_utcnow)
+    olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
 
     tedarikci = relationship("Tedarikci", back_populates="faturalar", lazy="selectin")
     kalemler = relationship("FaturaKalem", back_populates="fatura", lazy="selectin", cascade="all, delete-orphan")
@@ -194,7 +194,7 @@ class Puantaj(Base):
     sgk_kesinti = Column(Float, nullable=True)
     gelir_vergisi = Column(Float, nullable=True)
     gemini_ham_veri = Column(Text, nullable=True)
-    olusturma_tarihi = Column(DateTime, default=_utcnow)
+    olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
 
     calisan = relationship("Calisan", back_populates="puantajlar")
 
@@ -208,7 +208,7 @@ class Uyari(Base):
     baslik = Column(String(200), nullable=False)
     mesaj = Column(Text, nullable=False)
     oncelik = Column(String(20), default="normal")
-    olusturma_tarihi = Column(DateTime, default=_utcnow)
+    olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
     okundu = Column(Boolean, default=False)
     aksiyon_alindi = Column(Boolean, default=False)
     ilgili_entity_tipi = Column(String(30), nullable=True)
@@ -237,7 +237,7 @@ class BriefCache(Base):
     tarih = Column(Date, default=date.today, unique=True)
     brief_text = Column(Text, nullable=False)
     brief_data_json = Column(Text, nullable=True)
-    olusturma_tarihi = Column(DateTime, default=_utcnow)
+    olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
 
 
 # ─── KDV Kayıtları ────────────────────────────────────────────────────
@@ -266,6 +266,24 @@ _is_sqlite = DATABASE_URL.startswith("sqlite")
 _engine_kwargs: dict = {"echo": False}
 if _is_sqlite:
     _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    import ssl as _ssl_module
+
+    # Neon.tech URL'leri asyncpg'nin tanımadığı parametreler içerir (sslmode, channel_binding vb.)
+    # Tüm sorgu parametrelerini URL'den kaldır, SSL'i connect_args ile ver
+    if "?" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.split("?")[0]
+
+    _sc = _ssl_module.create_default_context()
+    _sc.check_hostname = False
+    _sc.verify_mode = _ssl_module.CERT_NONE
+
+    _engine_kwargs["connect_args"] = {"ssl": _sc}
+    # PostgreSQL bağlantı havuzu ayarları
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
+    _engine_kwargs["pool_pre_ping"] = True          # Bağlantı kopması durumunda otomatik yenileme
+    _engine_kwargs["pool_recycle"] = 300             # 5 dakikada bir bağlantıları yenile (Neon idle timeout)
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 

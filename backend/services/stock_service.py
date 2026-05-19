@@ -3,7 +3,7 @@ KOBİ AI Asistan — Stok Servisi
 Stok yönetimi, kritik kontrol, ABC analizi, tedarikçi karşılaştırma.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import func, select, and_
@@ -37,7 +37,7 @@ class StockService:
         stock_value = result.scalar() or 0
 
         # Gerçek ortalama devir hızı hesabı (son 30 gündeki çıkış hareketleri)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
             select(func.sum(func.abs(StokHareket.miktar)))
             .where(StokHareket.miktar < 0, StokHareket.tarih >= thirty_days_ago)
