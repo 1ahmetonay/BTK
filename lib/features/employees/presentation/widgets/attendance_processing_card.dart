@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/widgets/status_badge.dart';
 
 class AttendanceProcessingCard extends StatelessWidget {
   const AttendanceProcessingCard({
@@ -111,10 +110,7 @@ class _UploadCard extends StatelessWidget {
           const Text(
             'PDF, JPG, PNG, TIFF, XLSX • Maks. 10 MB',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.mutedText,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.mutedText, fontSize: 12),
           ),
           const SizedBox(height: 14),
           Container(
@@ -136,7 +132,9 @@ class _UploadCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    pickedFileName.isNotEmpty ? pickedFileName : 'Belge seçilmedi',
+                    pickedFileName.isNotEmpty
+                        ? pickedFileName
+                        : 'Belge seçilmedi',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -278,20 +276,27 @@ class _AnalysisResultCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.outlineSoft),
+                ),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       '${f.label}:',
-                      style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   Text(
                     f.value,
                     style: TextStyle(
-                      color: f.label.contains('Net Maaş') ? AppColors.primary : AppColors.onSurface,
+                      color: f.label.contains('Net Maaş')
+                          ? AppColors.primary
+                          : AppColors.onSurface,
                       fontSize: f.label.contains('Net Maaş') ? 16 : 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -325,10 +330,13 @@ class _AnalysisResultCard extends StatelessWidget {
 
   String _fmt(num v) {
     if (v >= 1000) {
-      return v.toDouble().toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (m) => '${m[1]}.',
-      );
+      return v
+          .toDouble()
+          .toStringAsFixed(0)
+          .replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (m) => '${m[1]}.',
+          );
     }
     return v.toStringAsFixed(0);
   }
@@ -390,17 +398,27 @@ class _EmployeeResultCard extends StatelessWidget {
         decoration: _cardDecoration(),
         child: Row(
           children: [
-            const Icon(Icons.warning_amber_outlined, color: AppColors.warningDark, size: 20),
+            const Icon(
+              Icons.warning_amber_outlined,
+              color: AppColors.warningDark,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     data['uyari'] as String? ?? '',
-                    style: const TextStyle(color: AppColors.warningDark, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.warningDark,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -430,7 +448,10 @@ class _EmployeeResultCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$cg gün · $mesai saat mesai · $izin gün izin',
-                  style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.mutedText,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -460,7 +481,9 @@ class _ImpactSummary extends StatelessWidget {
     final calisanSayisi = analizSonuc['calisan_sayisi'] ?? 0;
     final toplamBrut = analizSonuc['toplam_brut_maas'] ?? 0;
     final sonuclar = (analizSonuc['sonuclar'] as List<dynamic>?) ?? [];
-    final uyariSayisi = sonuclar.where((s) => (s as Map).containsKey('uyari')).length;
+    final uyariSayisi = sonuclar
+        .where((s) => (s as Map).containsKey('uyari'))
+        .length;
 
     return Container(
       width: double.infinity,
@@ -481,15 +504,20 @@ class _ImpactSummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _ImpactRow(text: '$calisanSayisi çalışan için puantaj kaydı oluşturulacak'),
+          _ImpactRow(
+            text: '$calisanSayisi çalışan için puantaj kaydı oluşturulacak',
+          ),
           const SizedBox(height: 12),
           _ImpactRow(text: 'Maaş hesaplamaları yapılıp bordro oluşturulacak'),
           const SizedBox(height: 12),
-          _ImpactRow(text: 'Nakit akışına $toplamBrut TL personel gideri eklenecek'),
+          _ImpactRow(
+            text: 'Nakit akışına $toplamBrut TL personel gideri eklenecek',
+          ),
           if (uyariSayisi > 0) ...[
             const SizedBox(height: 12),
             _ImpactRow(
-              text: '$uyariSayisi çalışan sistemde eşleşmedi, kayıt dışı kalacak',
+              text:
+                  '$uyariSayisi çalışan sistemde eşleşmedi, kayıt dışı kalacak',
               iconColor: AppColors.warningDark,
             ),
           ],

@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/routing/app_routes.dart';
+import '../../../core/onboarding/app_tour_controller.dart';
+import '../../../core/onboarding/app_tour_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/routing/app_routes.dart';
+import '../../../shared/widgets/app_tour_target.dart';
 import '../../../shared/widgets/status_badge.dart';
 import 'dashboard_mock_data.dart';
 
@@ -63,21 +66,54 @@ List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
   ];
 }
 
-class DashboardPage extends ConsumerWidget {
-  const DashboardPage({
-    this.onNavigate,
-    super.key,
-  });
+class DashboardPage extends ConsumerStatefulWidget {
+  const DashboardPage({this.onNavigate, super.key});
 
   final ValueChanged<String>? onNavigate;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  final _welcomeTourKey = GlobalKey();
+  final _statsTourKey = GlobalKey();
+  final _briefingTourKey = GlobalKey();
+  final _quickActionsTourKey = GlobalKey();
+
+  bool _tourQueued = false;
+
+  void _queueDashboardTour() {
+    if (_tourQueued) return;
+    _tourQueued = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(appTourControllerProvider)
+          .startPageTourIfNeeded(
+            context: context,
+            tourId: AppTourIds.dashboard,
+            targets: [
+              _welcomeTourKey,
+              _statsTourKey,
+              _briefingTourKey,
+              _quickActionsTourKey,
+            ],
+          );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dashboardDataAsync = ref.watch(dashboardSummaryProvider);
 
     return dashboardDataAsync.when(
       data: (data) {
-        final brief = data['sabah_brifingi'] ?? 'Günaydın! Verileriniz yükleniyor...';
+        _queueDashboardTour();
+
+        final brief =
+            data['sabah_brifingi'] ?? 'Günaydın! Verileriniz yükleniyor...';
         final stats = data['stats'] as Map<String, dynamic>? ?? {};
         final kritikStoklar = data['kritik_stoklar'] as List<dynamic>? ?? [];
         final gecikOdemeler = data['gecikmis_odemeler'] as List<dynamic>? ?? [];
@@ -86,25 +122,57 @@ class DashboardPage extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _WelcomeCard(briefing: brief),
-            const SizedBox(height: 22),
-            _StatsStrip(stats: apiStats),
-            const SizedBox(height: 22),
-            _MorningBriefingCard(
-              kritikStoklar: kritikStoklar,
-              gecikOdemeler: gecikOdemeler,
-              kdvOzet: data['kdv_ozet'] as Map<String, dynamic>? ?? {},
-              fullBriefText: brief,
+            AppTourTarget(
+              step: AppTourStep(
+                key: _welcomeTourKey,
+                title: 'AI Sabah Brifingi',
+                description:
+                    'Günün kritik stok, ödeme ve operasyon özetini burada görürsünüz.',
+              ),
+              child: _WelcomeCard(briefing: brief),
             ),
             const SizedBox(height: 22),
-            _QuickActions(onNavigate: onNavigate),
+            AppTourTarget(
+              step: AppTourStep(
+                key: _statsTourKey,
+                title: 'Canlı Özet Kartları',
+                description:
+                    'Stok değeri, nakit bakiye, kritik stok ve bekleyen ödeme durumunu hızlıca takip edin.',
+              ),
+              child: _StatsStrip(stats: apiStats),
+            ),
+            const SizedBox(height: 22),
+            AppTourTarget(
+              step: AppTourStep(
+                key: _briefingTourKey,
+                title: 'Öncelikli Brifing Maddeleri',
+                description:
+                    'Bugün aksiyon gerektiren stok, ödeme ve KDV başlıkları bu kartta listelenir.',
+              ),
+              child: _MorningBriefingCard(
+                kritikStoklar: kritikStoklar,
+                gecikOdemeler: gecikOdemeler,
+                kdvOzet: data['kdv_ozet'] as Map<String, dynamic>? ?? {},
+                fullBriefText: brief,
+              ),
+            ),
+            const SizedBox(height: 22),
+            AppTourTarget(
+              step: AppTourStep(
+                key: _quickActionsTourKey,
+                title: 'Hızlı İşlemler',
+                description:
+                    'Belge tarama, stok kontrolü, AI asistana soru sorma ve uyarılara geçiş işlemleri buradan yapılır.',
+              ),
+              child: _QuickActions(onNavigate: widget.onNavigate),
+            ),
             const SizedBox(height: 22),
             _PriorityAlerts(
               kritikStoklar: kritikStoklar,
               gecikOdemeler: gecikOdemeler,
             ),
             const SizedBox(height: 22),
-            _AiRecommendations(onNavigate: onNavigate),
+            _AiRecommendations(onNavigate: widget.onNavigate),
             const SizedBox(height: 12),
           ],
         );
@@ -114,7 +182,10 @@ class DashboardPage extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _WelcomeCard(briefing: 'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.'),
+            const _WelcomeCard(
+              briefing:
+                  'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.',
+            ),
             const SizedBox(height: 22),
             const _StatsStrip(stats: []),
             const SizedBox(height: 16),
@@ -123,11 +194,13 @@ class DashboardPage extends ConsumerWidget {
                 onPressed: () => ref.invalidate(dashboardSummaryProvider),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Tekrar Dene'),
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
               ),
             ),
             const SizedBox(height: 22),
-            _QuickActions(onNavigate: onNavigate),
+            _QuickActions(onNavigate: widget.onNavigate),
             const SizedBox(height: 12),
           ],
         );
@@ -136,7 +209,6 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-
 class _WelcomeCard extends StatelessWidget {
   const _WelcomeCard({required this.briefing});
 
@@ -144,44 +216,57 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: _cardDecoration(),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 5, color: AppColors.primary),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Sabah Brifingi',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 420;
+
+        return Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: _cardDecoration(),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 5, color: AppColors.primary),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'AI Sabah Brifingi',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          briefing,
+                          maxLines: compact ? 5 : 4,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
+                          style: const TextStyle(
+                            color: AppColors.mutedText,
+                            fontSize: 16,
+                            height: 1.45,
                           ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      briefing,
-                      style: const TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 16,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -201,10 +286,7 @@ class _StatsStrip extends StatelessWidget {
         itemCount: stats.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          return SizedBox(
-            width: 142,
-            child: _StatTile(data: stats[index]),
-          );
+          return SizedBox(width: 142, child: _StatTile(data: stats[index]));
         },
       ),
     );
@@ -259,9 +341,7 @@ class _StatTile extends StatelessWidget {
               Icon(
                 isCritical ? Icons.warning_amber_outlined : Icons.trending_up,
                 size: 16,
-                color: isCritical
-                    ? AppColors.error
-                    : AppColors.secondary,
+                color: isCritical ? AppColors.error : AppColors.secondary,
               ),
               const SizedBox(width: 4),
               Expanded(
@@ -270,9 +350,7 @@ class _StatTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isCritical
-                        ? AppColors.error
-                        : AppColors.secondary,
+                    color: isCritical ? AppColors.error : AppColors.secondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -474,6 +552,9 @@ class _BriefLine extends StatelessWidget {
         Expanded(
           child: Text(
             text,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            softWrap: true,
             style: const TextStyle(
               color: AppColors.mutedText,
               fontSize: 15,
@@ -574,8 +655,7 @@ class _ActionTile extends StatelessWidget {
         : AppColors.onSurface;
 
     return Material(
-      color:
-          emphasized ? AppColors.secondaryContainer : AppColors.surfaceWhite,
+      color: emphasized ? AppColors.secondaryContainer : AppColors.surfaceWhite,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -647,34 +727,42 @@ class _PriorityAlerts extends StatelessWidget {
     // Kritik stok uyarıları
     for (final item in kritikStoklar.take(3)) {
       final m = item as Map<String, dynamic>;
-      alerts.add(_AlertCard(
-        category: 'Stok Uyarısı',
-        title: '${m['isim'] ?? 'Ürün'} — ${m['mevcut_stok'] ?? '?'} adet kaldı',
-        badge: 'KRİTİK',
-        tone: StatusTone.danger,
-      ));
+      alerts.add(
+        _AlertCard(
+          category: 'Stok Uyarısı',
+          title:
+              '${m['isim'] ?? 'Ürün'} — ${m['mevcut_stok'] ?? '?'} adet kaldı',
+          badge: 'KRİTİK',
+          tone: StatusTone.danger,
+        ),
+      );
       alerts.add(const SizedBox(height: 8));
     }
 
     // Gecikmiş ödeme uyarıları
     for (final item in gecikOdemeler.take(2)) {
       final m = item as Map<String, dynamic>;
-      alerts.add(_AlertCard(
-        category: 'Finans Uyarısı',
-        title: '${m['karsi_taraf'] ?? 'Ödeme'} — ${m['gecikme_gun'] ?? '?'} gün gecikmiş',
-        badge: 'YÜKSEK',
-        tone: StatusTone.warning,
-      ));
+      alerts.add(
+        _AlertCard(
+          category: 'Finans Uyarısı',
+          title:
+              '${m['karsi_taraf'] ?? 'Ödeme'} — ${m['gecikme_gun'] ?? '?'} gün gecikmiş',
+          badge: 'YÜKSEK',
+          tone: StatusTone.warning,
+        ),
+      );
       alerts.add(const SizedBox(height: 8));
     }
 
     if (alerts.isEmpty) {
-      alerts.add(const _AlertCard(
-        category: 'Bilgi',
-        title: 'Aktif uyarı bulunmuyor',
-        badge: 'İYİ',
-        tone: StatusTone.success,
-      ));
+      alerts.add(
+        const _AlertCard(
+          category: 'Bilgi',
+          title: 'Aktif uyarı bulunmuyor',
+          badge: 'İYİ',
+          tone: StatusTone.success,
+        ),
+      );
     }
 
     return Column(
@@ -716,7 +804,9 @@ class _AlertCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: danger ? AppColors.errorSurfaceLight : AppColors.warningSurfaceWarm,
+        color: danger
+            ? AppColors.errorSurfaceLight
+            : AppColors.warningSurfaceWarm,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: danger ? AppColors.errorLight : AppColors.warningMuted,
@@ -751,8 +841,7 @@ class _AlertCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color:
-                  danger ? AppColors.error : AppColors.warning,
+              color: danger ? AppColors.error : AppColors.warning,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -800,7 +889,10 @@ class _AiRecommendations extends ConsumerWidget {
         suggestionsAsync.when(
           data: (suggestions) {
             if (suggestions.isEmpty) {
-              return _AiSuggestionCard(message: 'Şu an aktif öneri bulunmuyor.', onNavigate: onNavigate);
+              return _AiSuggestionCard(
+                message: 'Şu an aktif öneri bulunmuyor.',
+                onNavigate: onNavigate,
+              );
             }
             return Column(
               children: [
@@ -818,7 +910,8 @@ class _AiRecommendations extends ConsumerWidget {
             ),
           ),
           error: (_, __) => _AiSuggestionCard(
-            message: 'AI önerileri yüklenemedi. Backend bağlantısını kontrol edin.',
+            message:
+                'AI önerileri yüklenemedi. Backend bağlantısını kontrol edin.',
             onNavigate: onNavigate,
           ),
         ),
@@ -847,20 +940,51 @@ class _AiSuggestionCard extends StatelessWidget {
   /// Öneri metninin içeriğine göre ilgili modülün route'unu ve buton label'ını belirle
   (String route, String label, IconData icon) _detectTarget() {
     final lower = message.toLowerCase();
-    if (lower.contains('stok') || lower.contains('ürün') || lower.contains('tedarik')) {
-      return (AppRoutes.stock, 'Stok Yönetimine Git', Icons.inventory_2_outlined);
+    if (lower.contains('stok') ||
+        lower.contains('ürün') ||
+        lower.contains('tedarik')) {
+      return (
+        AppRoutes.stock,
+        'Stok Yönetimine Git',
+        Icons.inventory_2_outlined,
+      );
     }
-    if (lower.contains('nakit') || lower.contains('ödeme') || lower.contains('tahsilat') || lower.contains('maliyet') || lower.contains('kâr') || lower.contains('kar')) {
-      return (AppRoutes.finance, 'Finans Modülüne Git', Icons.account_balance_wallet_outlined);
+    if (lower.contains('nakit') ||
+        lower.contains('ödeme') ||
+        lower.contains('tahsilat') ||
+        lower.contains('maliyet') ||
+        lower.contains('kâr') ||
+        lower.contains('kar')) {
+      return (
+        AppRoutes.finance,
+        'Finans Modülüne Git',
+        Icons.account_balance_wallet_outlined,
+      );
     }
-    if (lower.contains('kdv') || lower.contains('vergi') || lower.contains('beyanname')) {
-      return (AppRoutes.finance, 'KDV Detayına Git', Icons.receipt_long_outlined);
+    if (lower.contains('kdv') ||
+        lower.contains('vergi') ||
+        lower.contains('beyanname')) {
+      return (
+        AppRoutes.finance,
+        'KDV Detayına Git',
+        Icons.receipt_long_outlined,
+      );
     }
-    if (lower.contains('puantaj') || lower.contains('çalışan') || lower.contains('mesai')) {
-      return (AppRoutes.employees, 'Puantaj Modülüne Git', Icons.groups_2_outlined);
+    if (lower.contains('puantaj') ||
+        lower.contains('çalışan') ||
+        lower.contains('mesai')) {
+      return (
+        AppRoutes.employees,
+        'Puantaj Modülüne Git',
+        Icons.groups_2_outlined,
+      );
     }
     if (lower.contains('belge') || lower.contains('fatura')) {
-      return (AppRoutes.documents, 'Belge İşlemeye Git', Icons.description_outlined);
+      return (
+        AppRoutes.documents,
+        'Belge İşlemeye Git',
+        Icons.description_outlined,
+      );
     }
     return (AppRoutes.chat, 'AI\'a Detay Sor', Icons.smart_toy_outlined);
   }

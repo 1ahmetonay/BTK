@@ -2,6 +2,8 @@ import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/onboarding/app_tour_controller.dart';
+import '../../../core/onboarding/app_tour_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/services/api_service.dart';
 import 'settings_mock_data.dart';
@@ -100,12 +102,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         onFieldChanged: (field, value) {
           setState(() {
             switch (field) {
-              case 'businessName': _businessName = value;
-              case 'taxNumber': _taxNumber = value;
-              case 'industry': _industry = value;
-              case 'city': _city = value;
-              case 'currency': _currency = value;
-              case 'defaultVatRate': _defaultVatRate = value;
+              case 'businessName':
+                _businessName = value;
+              case 'taxNumber':
+                _taxNumber = value;
+              case 'industry':
+                _industry = value;
+              case 'city':
+                _city = value;
+              case 'currency':
+                _currency = value;
+              case 'defaultVatRate':
+                _defaultVatRate = value;
             }
           });
         },
@@ -143,21 +151,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           'API anahtarları .env dosyasında tutulur, koda gömülmez.',
           'Tüm istekler HTTPS üzerinden iletilir.',
         ],
-        onResetDemoData: () =>
-            _showMessage('Demo verileri sıfırlama işlemi simüle edildi.'),
         onCheckSystem: _checkSystemStatus,
+        onResetTours: _resetAppTours,
       ),
       const SizedBox(height: 16),
       SettingsSidePanel(
-        activeModules: const ['Stok Yönetimi', 'Finans & KDV', 'Belge İşleme', 'Puantaj / İK', 'AI Asistan', 'E-Fatura'],
+        activeModules: const [
+          'Stok Yönetimi',
+          'Finans & KDV',
+          'Belge İşleme',
+          'Puantaj / İK',
+          'AI Asistan',
+          'E-Fatura',
+        ],
         activities: const [
           SettingsActivityMock('Sistem başlatıldı'),
           SettingsActivityMock('Backend bağlantısı kontrol edildi'),
         ],
         checklist: [
-          const SetupChecklistMock(title: 'Flutter Web arayüzü hazır', completed: true),
-          SetupChecklistMock(title: 'Backend bağlantısı', completed: _backendConnected),
-          SetupChecklistMock(title: 'Gemini API entegrasyonu', completed: _geminiAvailable),
+          const SetupChecklistMock(
+            title: 'Flutter Web arayüzü hazır',
+            completed: true,
+          ),
+          SetupChecklistMock(
+            title: 'Backend bağlantısı',
+            completed: _backendConnected,
+          ),
+          SetupChecklistMock(
+            title: 'Gemini API entegrasyonu',
+            completed: _geminiAvailable,
+          ),
           const SetupChecklistMock(title: 'İlk belge işleme', completed: false),
         ],
       ),
@@ -189,6 +212,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     } catch (_) {
       if (mounted) _showMessage('✗ Bağlantı hatası. Backend çalışıyor mu?');
     }
+  }
+
+  Future<void> _resetAppTours() async {
+    await ref.read(appTourControllerProvider).resetTour(AppTourIds.dashboard);
+    if (!mounted) return;
+    _showMessage(
+      'Uygulama turu sıfırlandı. Ana Sayfa’ya dönünce tekrar açılacak.',
+    );
   }
 
   void _showMessage(String message) {

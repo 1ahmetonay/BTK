@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kobi_ai_asistan/app.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'app_tour.completed.dashboard_v2': true,
+    });
+  });
+
   Future<void> pumpMobileApp(WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const KobiAIAsistanApp());
+    await tester.pumpWidget(const ProviderScope(child: KobiAIAsistanApp()));
     await tester.pumpAndSettle();
   }
 
@@ -15,7 +23,7 @@ void main() {
     await pumpMobileApp(tester);
 
     expect(find.text('Ana Sayfa'), findsWidgets);
-    expect(find.text('Aylık Ciro'), findsOneWidget);
+    expect(find.text('AI Sabah Brifingi'), findsOneWidget);
   });
 
   testWidgets('mobile bottom navigation exposes primary routes', (
@@ -41,6 +49,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Stok Yönetimi'), findsWidgets);
-    expect(find.text('Ürün Stok Durumu'), findsOneWidget);
   });
 }

@@ -17,57 +17,78 @@ class SettingsSidePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final modules = activeModules
-        .where(
-          (module) =>
-              ['Dashboard', 'Stok', 'Finans', 'AI Asistan'].contains(module),
-        )
-        .toList();
-
     return Column(
       children: [
         _SettingsCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'AKTİF MODÜLLER',
-                style: TextStyle(
-                  color: AppColors.mutedText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 4.2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 8,
+              Row(
                 children: [
-                  for (final module in modules)
-                    Row(
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.successSurface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.secondaryBorder),
+                    ),
+                    child: const Icon(
+                      Icons.widgets_outlined,
+                      color: AppColors.secondary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.check_circle_outline,
-                          color: AppColors.secondary,
-                          size: 14,
+                        Text(
+                          'Aktif Modüller',
+                          style: TextStyle(
+                            color: AppColors.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            module,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13),
+                        SizedBox(height: 2),
+                        Text(
+                          'Kullanıma açık uygulama alanları',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.mutedText,
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  _ModuleCountBadge(count: activeModules.length),
                 ],
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 560 ? 3 : 2;
+                  final spacing = 10.0;
+                  final itemWidth =
+                      (constraints.maxWidth - spacing * (columns - 1)) /
+                      columns;
+
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: 10,
+                    children: [
+                      for (final module in activeModules)
+                        SizedBox(
+                          width: itemWidth,
+                          child: _ModuleTile(module: module),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -101,6 +122,82 @@ class SettingsSidePanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ModuleCountBadge extends StatelessWidget {
+  const _ModuleCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.secondaryBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.secondaryBorder),
+      ),
+      child: Text(
+        '$count aktif',
+        style: const TextStyle(
+          color: AppColors.onSecondaryContainer,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _ModuleTile extends StatelessWidget {
+  const _ModuleTile({required this.module});
+
+  final String module;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceUltraLight,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.secondaryBg,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: AppColors.secondary,
+              size: 17,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              module,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 13,
+                height: 1.2,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

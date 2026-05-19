@@ -68,7 +68,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
       final liveEmployees = <EmployeeAttendanceMock>[];
       int toplamMesai = 0;
       int toplamIzin = 0;
-      int toplamCalismaGunu = 0;
       double toplamNet = 0;
 
       for (final row in bordro) {
@@ -78,7 +77,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
         final izin = (m['izin_gunu'] as num?)?.toInt() ?? 0;
         final net = (m['net_maas'] as num?)?.toDouble() ?? 0;
 
-        toplamCalismaGunu += calismaGunu;
         toplamMesai += mesai;
         toplamIzin += izin;
         toplamNet += net;
@@ -94,31 +92,36 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
         final rate = calismaGunu > 0 ? calismaGunu / 22.0 : 0.0;
 
-        liveEmployees.add(EmployeeAttendanceMock(
-          employeeName: m['calisan'] as String? ?? '—',
-          position: m['pozisyon'] as String? ?? '—',
-          workDays: '$calismaGunu gün',
-          overtime: '$mesai saat',
-          leaveDays: '$izin gün',
-          estimatedNetSalary: '${_fmt(net)} TL',
-          status: status,
-          attendanceRate: rate.clamp(0.0, 1.0),
-        ));
+        liveEmployees.add(
+          EmployeeAttendanceMock(
+            employeeName: m['calisan'] as String? ?? '—',
+            position: m['pozisyon'] as String? ?? '—',
+            workDays: '$calismaGunu gün',
+            overtime: '$mesai saat',
+            leaveDays: '$izin gün',
+            estimatedNetSalary: '${_fmt(net)} TL',
+            status: status,
+            attendanceRate: rate.clamp(0.0, 1.0),
+          ),
+        );
       }
 
       if (liveEmployees.isEmpty) {
         for (final raw in employeeList) {
           final m = raw as Map<String, dynamic>;
-          liveEmployees.add(EmployeeAttendanceMock(
-            employeeName: m['ad_soyad'] as String? ?? '—',
-            position: m['pozisyon'] as String? ?? '—',
-            workDays: '—',
-            overtime: '—',
-            leaveDays: '—',
-            estimatedNetSalary: '${_fmt((m['brut_maas'] as num?)?.toDouble() ?? 0)} TL',
-            status: AttendanceStatus.normal,
-            attendanceRate: 0.0,
-          ));
+          liveEmployees.add(
+            EmployeeAttendanceMock(
+              employeeName: m['ad_soyad'] as String? ?? '—',
+              position: m['pozisyon'] as String? ?? '—',
+              workDays: '—',
+              overtime: '—',
+              leaveDays: '—',
+              estimatedNetSalary:
+                  '${_fmt((m['brut_maas'] as num?)?.toDouble() ?? 0)} TL',
+              status: AttendanceStatus.normal,
+              attendanceRate: 0.0,
+            ),
+          );
         }
       }
 
@@ -168,15 +171,21 @@ class _EmployeesPageState extends State<EmployeesPage> {
       final liveIssues = <AttendanceIssueMock>[];
       for (final e in liveEmployees) {
         if (e.status == AttendanceStatus.needsReview) {
-          liveIssues.add(AttendanceIssueMock(
-            employeeName: e.employeeName,
-            description: '${e.leaveDays} izin tespit edildi, manuel kontrol önerilir.',
-          ));
+          liveIssues.add(
+            AttendanceIssueMock(
+              employeeName: e.employeeName,
+              description:
+                  '${e.leaveDays} izin tespit edildi, manuel kontrol önerilir.',
+            ),
+          );
         } else if (e.status == AttendanceStatus.highOvertime) {
-          liveIssues.add(AttendanceIssueMock(
-            employeeName: e.employeeName,
-            description: '${e.overtime} mesai ile dönem ortalamasının üzerinde.',
-          ));
+          liveIssues.add(
+            AttendanceIssueMock(
+              employeeName: e.employeeName,
+              description:
+                  '${e.overtime} mesai ile dönem ortalamasının üzerinde.',
+            ),
+          );
         }
       }
 
@@ -196,18 +205,23 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
       final liveInsights = <EmployeeInsightMock>[];
       for (final issue in liveIssues) {
-        liveInsights.add(EmployeeInsightMock(
-          message: '${issue.employeeName}: ${issue.description}',
-          icon: Icons.auto_awesome_outlined,
-          iconColor: AppColors.amber,
-        ));
+        liveInsights.add(
+          EmployeeInsightMock(
+            message: '${issue.employeeName}: ${issue.description}',
+            icon: Icons.auto_awesome_outlined,
+            iconColor: AppColors.amber,
+          ),
+        );
       }
       if (toplamNet > 0) {
-        liveInsights.add(EmployeeInsightMock(
-          message: 'Puantaj onaylandığında ${_fmt(toplamNet)} TL personel gideri finans modülüne aktarılabilir.',
-          icon: Icons.auto_awesome_outlined,
-          iconColor: AppColors.primary,
-        ));
+        liveInsights.add(
+          EmployeeInsightMock(
+            message:
+                'Puantaj onaylandığında ${_fmt(toplamNet)} TL personel gideri finans modülüne aktarılabilir.',
+            icon: Icons.auto_awesome_outlined,
+            iconColor: AppColors.primary,
+          ),
+        );
       }
 
       final liveMovements = <AttendanceMovementMock>[
@@ -220,21 +234,25 @@ class _EmployeesPageState extends State<EmployeesPage> {
         ),
       ];
       for (final issue in liveIssues.take(2)) {
-        liveMovements.add(AttendanceMovementMock(
-          title: '${issue.employeeName} kontrol uyarısı',
-          detail: issue.description,
-          timestamp: 'Güncel',
-          icon: Icons.warning_amber_outlined,
-          iconColor: AppColors.rose,
-        ));
+        liveMovements.add(
+          AttendanceMovementMock(
+            title: '${issue.employeeName} kontrol uyarısı',
+            detail: issue.description,
+            timestamp: 'Güncel',
+            icon: Icons.warning_amber_outlined,
+            iconColor: AppColors.rose,
+          ),
+        );
       }
-      liveMovements.add(AttendanceMovementMock(
-        title: 'Personel gideri finans modülüne hazırlandı',
-        detail: '${_fmt(toplamNet)} TL',
-        timestamp: 'Güncel',
-        icon: Icons.account_balance_wallet_outlined,
-        iconColor: AppColors.emerald,
-      ));
+      liveMovements.add(
+        AttendanceMovementMock(
+          title: 'Personel gideri finans modülüne hazırlandı',
+          detail: '${_fmt(toplamNet)} TL',
+          timestamp: 'Güncel',
+          icon: Icons.account_balance_wallet_outlined,
+          iconColor: AppColors.emerald,
+        ),
+      );
 
       setState(() {
         _summaryCards = liveSummary;
@@ -258,10 +276,12 @@ class _EmployeesPageState extends State<EmployeesPage> {
   String _fmt(double v) {
     if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
     if (v >= 1000) {
-      return v.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (m) => '${m[1]}.',
-      );
+      return v
+          .toStringAsFixed(0)
+          .replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (m) => '${m[1]}.',
+          );
     }
     return v.toStringAsFixed(0);
   }
@@ -317,7 +337,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
           _analizData = null;
           _isAnalyzing = false;
         });
-        _showMessage('Analiz başarısız: ${result['error'] ?? 'Bilinmeyen hata'}');
+        _showMessage(
+          'Analiz başarısız: ${result['error'] ?? 'Bilinmeyen hata'}',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -353,7 +375,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
         );
         _fetchData();
       } else {
-        _showMessage('İşlem başarısız: ${result['error'] ?? 'Bilinmeyen hata'}');
+        _showMessage(
+          'İşlem başarısız: ${result['error'] ?? 'Bilinmeyen hata'}',
+        );
       }
     } catch (e) {
       if (mounted) _showMessage('İşlem hatası: $e');
@@ -389,8 +413,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
   }
 
   void _reviewEmployee(String employeeName) {
-    final employee =
-        _employees.where((e) => e.employeeName == employeeName).firstOrNull;
+    final employee = _employees
+        .where((e) => e.employeeName == employeeName)
+        .firstOrNull;
     if (employee == null) {
       _showMessage('$employeeName bulunamadı.');
       return;
@@ -413,13 +438,13 @@ class _EmployeesPageState extends State<EmployeesPage> {
               label: employee.status == AttendanceStatus.normal
                   ? 'Normal'
                   : employee.status == AttendanceStatus.highOvertime
-                      ? 'Yüksek Mesai'
-                      : 'İnceleme Gerekli',
+                  ? 'Yüksek Mesai'
+                  : 'İnceleme Gerekli',
               tone: employee.status == AttendanceStatus.normal
                   ? StatusTone.success
                   : employee.status == AttendanceStatus.highOvertime
-                      ? StatusTone.warning
-                      : StatusTone.danger,
+                  ? StatusTone.warning
+                  : StatusTone.danger,
             ),
           ],
         ),
@@ -439,12 +464,14 @@ class _EmployeesPageState extends State<EmployeesPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 13, color: AppColors.mutedText)),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppColors.mutedText),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -469,11 +496,13 @@ class _EmployeesPageState extends State<EmployeesPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined,
-                size: 48, color: AppColors.mutedText),
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
             const SizedBox(height: 12),
-            Text(_error!,
-                style: const TextStyle(color: AppColors.mutedText)),
+            Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
@@ -485,8 +514,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Tekrar Dene'),
-              style:
-                  FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             ),
           ],
         ),
@@ -512,14 +540,16 @@ class _EmployeesPageState extends State<EmployeesPage> {
             if (constraints.maxWidth < 700) {
               return MobileStatStrip(
                 children: _summaryCards
-                    .map((s) => MobileStatTile(
-                          title: s.title,
-                          value: s.value,
-                          trend: s.trend,
-                          trendTone: s.trendTone,
-                          icon: s.icon,
-                          accentColor: s.accentColor,
-                        ))
+                    .map(
+                      (s) => MobileStatTile(
+                        title: s.title,
+                        value: s.value,
+                        trend: s.trend,
+                        trendTone: s.trendTone,
+                        icon: s.icon,
+                        accentColor: s.accentColor,
+                      ),
+                    )
                     .toList(),
               );
             }
@@ -527,8 +557,8 @@ class _EmployeesPageState extends State<EmployeesPage> {
             final columns = constraints.maxWidth >= 1200
                 ? 4
                 : constraints.maxWidth >= 720
-                    ? 2
-                    : 1;
+                ? 2
+                : 1;
 
             return GridView.count(
               crossAxisCount: columns,
@@ -538,15 +568,17 @@ class _EmployeesPageState extends State<EmployeesPage> {
               mainAxisSpacing: 14,
               childAspectRatio: columns == 1 ? 2.25 : 1.25,
               children: _summaryCards
-                  .map((s) => StatCard(
-                        title: s.title,
-                        value: s.value,
-                        description: s.description,
-                        trend: s.trend,
-                        trendTone: s.trendTone,
-                        icon: s.icon,
-                        accentColor: s.accentColor,
-                      ))
+                  .map(
+                    (s) => StatCard(
+                      title: s.title,
+                      value: s.value,
+                      description: s.description,
+                      trend: s.trend,
+                      trendTone: s.trendTone,
+                      icon: s.icon,
+                      accentColor: s.accentColor,
+                    ),
+                  )
                   .toList(),
             );
           },
