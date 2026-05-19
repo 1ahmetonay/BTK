@@ -9,25 +9,17 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  // Backend URL — akıllı platform algılama
+  static const _productionUrl = 'https://btk-w3x6.onrender.com';
+
   static String get _baseUrl {
-    // 1. dart-define ile override edilebilir (en yüksek öncelik)
-    //    flutter build web --dart-define=API_BASE_URL=https://your-backend.onrender.com
     const envUrl = String.fromEnvironment('API_BASE_URL');
     if (envUrl.isNotEmpty) return envUrl;
 
-    // 2. Web platformu
     if (kIsWeb) {
-      // Debug modda (flutter run -d chrome): localhost:8000'e bağlan
       if (kDebugMode) return 'http://localhost:8000';
-      // Release modda: dart-define verilmediyse backend bağlantısı yok.
-      // Boş string dönerse istekler GitHub Pages'e gider ve 404 alır.
-      // Bu durum yalnızca backend henüz deploy edilmemişse oluşur.
-      return '';
+      return _productionUrl;
     }
 
-    // 3. Android emülatör: 10.0.2.2 = host makinenin localhost'u
-    // Gerçek cihazda: flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
     return 'http://10.0.2.2:8000';
   }
 
