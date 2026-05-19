@@ -250,35 +250,72 @@ class DocumentService:
     async def approve_timesheet(self, db: AsyncSession, analiz_data: dict) -> dict:
         """Analiz edilmiş puantaj verisini onaylar ve DB'ye kaydeder."""
 
-        ay = analiz_data.get("ay", date.today().month)
-        yil = analiz_data.get("yil", date.today().year)
+        today = date.today()
+        ay = today.month
+        yil = today.year
         sonuclar = analiz_data.get("sonuclar", [])
 
         kaydedilen = []
 
         for s in sonuclar:
             calisan_id = s.get("calisan_id")
+            isim = s.get("calisan", "")
+
+            if not calisan_id and isim:
+                yeni_calisan = Calisan(
+                    ad_soyad=isim,
+                    pozisyon=s.get("pozisyon", "Personel"),
+                    brut_maas=s.get("brut_maas", 0),
+                    ise_giris_tarihi=today,
+                    aktif=True,
+                )
+                db.add(yeni_calisan)
+                await db.flush()
+                calisan_id = yeni_calisan.id
+
             if not calisan_id:
                 continue
 
-            puantaj = Puantaj(
-                calisan_id=calisan_id,
-                yil=yil,
-                ay=ay,
-                calisma_gunleri=s.get("calisma_gunu", 0),
-                mesai_saat=s.get("mesai_saat", 0),
-                izin_gunu=s.get("izin_gunu", 0),
-                rapor_gunu=s.get("rapor_gunu", 0),
-                brut_maas=s.get("brut_maas", 0),
-                net_maas=s.get("net_maas", 0),
-                sgk_kesinti=s.get("sgk", 0),
-                gelir_vergisi=s.get("gelir_vergisi", 0),
-                gemini_ham_veri=json.dumps(s.get("gemini_ham", {}), ensure_ascii=False),
-                onaylandi=True,
+            result = await db.execute(
+                select(Puantaj).where(
+                    Puantaj.calisan_id == calisan_id,
+                    Puantaj.ay == ay,
+                    Puantaj.yil == yil,
+                )
             )
-            db.add(puantaj)
+            mevcut = result.scalar_one_or_none()
+
+            if mevcut:
+                mevcut.calisma_gunleri = s.get("calisma_gunu", 0)
+                mevcut.mesai_saat = s.get("mesai_saat", 0)
+                mevcut.izin_gunu = s.get("izin_gunu", 0)
+                mevcut.rapor_gunu = s.get("rapor_gunu", 0)
+                mevcut.brut_maas = s.get("brut_maas", 0)
+                mevcut.net_maas = s.get("net_maas", 0)
+                mevcut.sgk_kesinti = s.get("sgk", 0)
+                mevcut.gelir_vergisi = s.get("gelir_vergisi", 0)
+                mevcut.gemini_ham_veri = json.dumps(s.get("gemini_ham", {}), ensure_ascii=False)
+                mevcut.onaylandi = True
+            else:
+                puantaj = Puantaj(
+                    calisan_id=calisan_id,
+                    yil=yil,
+                    ay=ay,
+                    calisma_gunleri=s.get("calisma_gunu", 0),
+                    mesai_saat=s.get("mesai_saat", 0),
+                    izin_gunu=s.get("izin_gunu", 0),
+                    rapor_gunu=s.get("rapor_gunu", 0),
+                    brut_maas=s.get("brut_maas", 0),
+                    net_maas=s.get("net_maas", 0),
+                    sgk_kesinti=s.get("sgk", 0),
+                    gelir_vergisi=s.get("gelir_vergisi", 0),
+                    gemini_ham_veri=json.dumps(s.get("gemini_ham", {}), ensure_ascii=False),
+                    onaylandi=True,
+                )
+                db.add(puantaj)
+
             kaydedilen.append({
-                "calisan": s.get("calisan", ""),
+                "calisan": isim,
                 "brut_maas": s.get("brut_maas", 0),
                 "net_maas": s.get("net_maas", 0),
             })
