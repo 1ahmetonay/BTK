@@ -24,8 +24,6 @@ class AppTopbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final showSearch = !compact && constraints.maxWidth >= 760;
-
         return SafeArea(
           bottom: false,
           child: Container(
@@ -80,24 +78,6 @@ class AppTopbar extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (showSearch) ...[
-                  const SizedBox(width: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 280),
-                    child: TextField(
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        hintText: 'Ara',
-                        prefixIcon: const Icon(Icons.search),
-                        contentPadding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(maxHeight: 42),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(width: 4),
                 IconButton(
                   tooltip: 'Bildirimler',

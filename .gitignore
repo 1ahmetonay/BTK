@@ -40,6 +40,8 @@ app.*.symbols
 app.*.map.json
 
 venv/
+.venv/
+**/.venv/
 .env
 .env.*
 !.env.example

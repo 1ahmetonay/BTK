@@ -30,6 +30,7 @@ class AppSidebar extends StatelessWidget {
               const SizedBox(height: 26),
               Expanded(
                 child: ListView.separated(
+                  padding: EdgeInsets.zero,
                   itemCount: AppRoutes.items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 6),
                   itemBuilder: (context, index) {
@@ -67,10 +68,7 @@ class _BrandHeader extends StatelessWidget {
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
-            Icons.insights_outlined,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.insights_outlined, color: Colors.white),
         ),
         const SizedBox(width: 12),
         const Expanded(
@@ -92,10 +90,7 @@ class _BrandHeader extends StatelessWidget {
                 AppStrings.appTagline,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.sidebarMuted,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.sidebarMuted, fontSize: 12),
               ),
             ],
           ),
@@ -128,8 +123,8 @@ class _SidebarItemState extends State<_SidebarItem> {
     final Color backgroundColor = widget.selected
         ? AppColors.sidebarActive
         : _hovered
-            ? AppColors.sidebarHover
-            : Colors.transparent;
+        ? AppColors.sidebarHover
+        : Colors.transparent;
     final Color foregroundColor = widget.selected || _hovered
         ? Colors.white
         : AppColors.sidebarText;
@@ -156,30 +151,35 @@ class _SidebarItemState extends State<_SidebarItem> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               child: Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
-                    child: Icon(
-                      widget.item.icon,
-                      key: ValueKey<Color>(iconColor),
-                      size: 21,
-                      color: iconColor,
+                  SizedBox(
+                    width: 24,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Icon(widget.item.icon, size: 21, color: iconColor),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 160),
-                      curve: Curves.easeOutCubic,
-                      style: TextStyle(
-                        color: foregroundColor,
-                        fontWeight:
-                            widget.selected ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                      child: Text(
-                        widget.item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 160),
+                        curve: Curves.easeOutCubic,
+                        style: TextStyle(
+                          color: foregroundColor,
+                          fontWeight: widget.selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                        child: Text(
+                          widget.item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.left,
+                        ),
                       ),
                     ),
                   ),
@@ -212,11 +212,20 @@ class _PlanSummaryState extends State<_PlanSummary> {
 
   Future<void> _checkConnection() async {
     try {
-      final ok =
-          await ApiService.instance.isBackendAvailable();
-      if (mounted) setState(() { _connected = ok; _checking = false; });
+      final ok = await ApiService.instance.isBackendAvailable();
+      if (mounted) {
+        setState(() {
+          _connected = ok;
+          _checking = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _connected = false; _checking = false; });
+      if (mounted) {
+        setState(() {
+          _connected = false;
+          _checking = false;
+        });
+      }
     }
   }
 
@@ -225,13 +234,13 @@ class _PlanSummaryState extends State<_PlanSummary> {
     final title = _checking
         ? 'Bağlantı kontrol ediliyor…'
         : _connected
-            ? 'API Bağlı'
-            : 'Demo Veri Modu';
+        ? 'API Bağlı'
+        : 'Demo Veri Modu';
     final subtitle = _checking
         ? 'Backend sunucusu aranıyor.'
         : _connected
-            ? 'Tüm veriler backend API üzerinden canlı çekiliyor.'
-            : 'Backend kapalı. Ekranlar mock veriyle çalışır.';
+        ? 'Tüm veriler backend API üzerinden canlı çekiliyor.'
+        : 'Backend kapalı. Ekranlar mock veriyle çalışır.';
     final borderColor = _connected
         ? AppColors.secondary
         : AppColors.sidebarSubtle;
@@ -250,8 +259,12 @@ class _PlanSummaryState extends State<_PlanSummary> {
           Row(
             children: [
               Icon(
-                _connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-                color: _connected ? AppColors.secondaryLight : AppColors.sidebarMuted,
+                _connected
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
+                color: _connected
+                    ? AppColors.secondaryLight
+                    : AppColors.sidebarMuted,
                 size: 16,
               ),
               const SizedBox(width: 6),

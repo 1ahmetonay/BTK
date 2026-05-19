@@ -2,6 +2,7 @@ import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import 'core/constants/app_strings.dart';
+import 'core/onboarding/app_tour_scope.dart';
 import 'core/routing/app_routes.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/widgets/app_sidebar.dart';
@@ -12,19 +13,21 @@ class KobiAIAsistanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      initialRoute: AppRoutes.dashboard,
-      onGenerateRoute: (settings) {
-        final route = AppRoutes.normalize(settings.name);
+    return AppTourScope(
+      child: MaterialApp(
+        title: AppStrings.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        initialRoute: AppRoutes.dashboard,
+        onGenerateRoute: (settings) {
+          final route = AppRoutes.normalize(settings.name);
 
-        return MaterialPageRoute<void>(
-          settings: RouteSettings(name: route),
-          builder: (_) => AppShell(initialRoute: route),
-        );
-      },
+          return MaterialPageRoute<void>(
+            settings: RouteSettings(name: route),
+            builder: (_) => AppShell(initialRoute: route),
+          );
+        },
+      ),
     );
   }
 }
