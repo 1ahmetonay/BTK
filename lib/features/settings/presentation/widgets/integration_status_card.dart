@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/services/api_service.dart';
@@ -80,7 +81,7 @@ class _IntegrationStatusCardState extends State<IntegrationStatusCard> {
           const Text(
             'Entegrasyon Durumu',
             style: TextStyle(
-              color: Color(0xFF191C1D),
+              color: AppColors.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -147,7 +148,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: child,
     );

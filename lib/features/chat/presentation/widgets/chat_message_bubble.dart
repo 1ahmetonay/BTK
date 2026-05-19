@@ -26,9 +26,9 @@ class ChatMessageBubble extends StatelessWidget {
             DecoratedBox(
               decoration: BoxDecoration(
                 color: isUser
-                    ? const Color(0xFF002045)
+                    ? AppColors.primary
                     : message.tools.isEmpty
-                    ? const Color(0xFFE7E8E9)
+                    ? AppColors.surfaceHigh
                     : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(isUser ? 12 : 2),
@@ -38,7 +38,7 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
                 border: isUser
                     ? null
-                    : Border.all(color: const Color(0xFFC4C6CF)),
+                    : Border.all(color: AppColors.outline),
                 boxShadow: isUser
                     ? [
                         BoxShadow(
@@ -65,7 +65,7 @@ class ChatMessageBubble extends StatelessWidget {
                     ),
                     if (!isUser && message.tools.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      const Divider(color: Color(0xFFC4C6CF)),
+                      const Divider(color: AppColors.outline),
                       const SizedBox(height: 8),
                       if (message.steps.isNotEmpty) ...[
                         _AnalysisSteps(steps: message.steps),
@@ -74,7 +74,7 @@ class ChatMessageBubble extends StatelessWidget {
                       const Text(
                         'Kullanılan Araçlar',
                         style: TextStyle(
-                          color: Color(0xFF43474E),
+                          color: AppColors.mutedText,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -93,9 +93,11 @@ class ChatMessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              isUser ? 'SİZ • 2 DK ÖNCE' : _assistantStamp,
+              isUser
+                  ? 'SİZ • ${_relativeTime(message.timestamp)}'
+                  : 'AI ASİSTAN • ${_relativeTime(message.timestamp)}',
               style: const TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.1,
@@ -107,10 +109,13 @@ class ChatMessageBubble extends StatelessWidget {
     );
   }
 
-  String get _assistantStamp {
-    return message.tools.isEmpty
-        ? 'AI ASİSTAN • ŞİMDİ'
-        : 'AI ASİSTAN • 1 DK ÖNCE';
+  static String _relativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 30) return 'ŞİMDİ';
+    if (diff.inMinutes < 1) return '${diff.inSeconds} SN ÖNCE';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} DK ÖNCE';
+    if (diff.inHours < 24) return '${diff.inHours} SAAT ÖNCE';
+    return '${diff.inDays} GÜN ÖNCE';
   }
 }
 
@@ -126,12 +131,12 @@ class _AnalysisSteps extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.analytics_outlined, color: Color(0xFF43474E), size: 16),
+            Icon(Icons.analytics_outlined, color: AppColors.mutedText, size: 16),
             SizedBox(width: 5),
             Text(
               'Analiz Adımları',
               style: TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -144,7 +149,7 @@ class _AnalysisSteps extends StatelessWidget {
             children: [
               const Icon(
                 Icons.check_circle_outline,
-                color: Color(0xFF2C694E),
+                color: AppColors.secondary,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -152,7 +157,7 @@ class _AnalysisSteps extends StatelessWidget {
                 child: Text(
                   step,
                   style: const TextStyle(
-                    color: Color(0xFF0E5138),
+                    color: AppColors.onSecondaryContainer,
                     fontSize: 13,
                     height: 1.35,
                   ),
@@ -214,7 +219,7 @@ class _GoToModuleButton extends StatelessWidget {
       icon: Icon(icon, size: 18),
       label: Text(label),
       style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFF002045),
+        foregroundColor: AppColors.primary,
         textStyle: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -234,9 +239,9 @@ class TypingBubble extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFE7E8E9),
+          color: AppColors.surfaceHigh,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFC4C6CF)),
+          border: Border.all(color: AppColors.outline),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,

@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import 'core/constants/app_strings.dart';
@@ -91,6 +92,9 @@ class _AppShellState extends State<AppShell> {
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                      child: Center(
+                      child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1200),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         reverseDuration: const Duration(milliseconds: 160),
@@ -115,6 +119,8 @@ class _AppShellState extends State<AppShell> {
                           child: _pageFor(_currentRoute),
                         ),
                       ),
+                    ),
+                    ),
                     ),
                   ),
                 ),
@@ -280,7 +286,7 @@ class _ShellBottomNavigation extends StatelessWidget {
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFC4C6CF))),
+        border: Border(top: BorderSide(color: AppColors.outline)),
       ),
       child: Center(
         heightFactor: 1,
@@ -324,8 +330,8 @@ class _BottomNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected
-        ? const Color(0xFF002045)
-        : const Color(0xFF43474E);
+        ? AppColors.primary
+        : AppColors.mutedText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -339,7 +345,7 @@ class _BottomNavButton extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFFAEEECB) : Colors.transparent,
+              color: selected ? AppColors.successLight : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(

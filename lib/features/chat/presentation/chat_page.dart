@@ -1,9 +1,11 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/conversation_provider.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/chat_storage.dart';
 import 'chat_mock_data.dart';
 import 'widgets/chat_conversation_card.dart';
 
@@ -17,42 +19,87 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessageMock> _messages = [
-    ChatMessageMock(
-      id: 'assistant-initial',
-      role: ChatRole.assistant,
-      message:
-          'Merhaba, ben KOBİ AI Asistan. Stok, finans, KDV, tedarik ve puantaj verilerinizi analiz edebilirim.',
-      timestamp: DateTime(2026, 5, 13, 9),
-    ),
-    ChatMessageMock(
-      id: 'user-seed',
-      role: ChatRole.user,
-      message: 'Önümüzdeki ay nakit sıkışması yaşar mıyım?',
-      timestamp: DateTime(2026, 5, 13, 9, 2),
-    ),
-    ChatMessageMock(
-      id: 'assistant-seed',
-      role: ChatRole.assistant,
-      message:
-          '30 günlük projeksiyona göre 14 gün sonra 42.000 TL nakit açığı riski görünüyor. Ana neden Aksoy Tedarik ödemesi ve gecikmiş 3 tahsilat.',
-      timestamp: DateTime(2026, 5, 13, 9, 3),
-      tools: const [
-        ToolUsageMock('get_cash_forecast'),
-        ToolUsageMock('get_overdue_payments'),
-        ToolUsageMock('get_finance_summary'),
-      ],
-      steps: const [
-        'Soru yorumlandı',
-        'Nakit akışı verisi incelendi',
-        'Gecikmiş tahsilatlar kontrol edildi',
-        'Risk ve öneri üretildi',
-      ],
-    ),
-  ];
+  final List<ChatMessageMock> _messages = [];
+  List<SuggestedQuestionMock> _suggestedQuestions = [];
 
   bool _isTyping = false;
   int _messageCounter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChatHistory();
+    _loadSuggestions();
+  }
+
+  Future<void> _loadChatHistory() async {
+    final saved = await ChatStorage.loadMessages();
+    final savedConvId = await ChatStorage.loadConversationId();
+    if (!mounted) return;
+    if (saved.isNotEmpty) {
+      setState(() {
+        _messages.addAll(saved);
+        _messageCounter = saved.length;
+      });
+      if (savedConvId != null && savedConvId.isNotEmpty) {
+        ref.read(conversationIdProvider.notifier).set(savedConvId);
+      }
+    } else {
+      setState(() {
+        _messages.add(
+          ChatMessageMock(
+            id: 'assistant-initial',
+            role: ChatRole.assistant,
+            message:
+                'Merhaba, ben KOBİ AI Asistan. Stok, finans, KDV, tedarik ve puantaj verilerinizi analiz edebilirim. Size nasıl yardımcı olabilirim?',
+            timestamp: DateTime.now(),
+          ),
+        );
+      });
+    }
+  }
+
+  void _persistChat() {
+    ChatStorage.saveMessages(_messages);
+    final convId = ref.read(conversationIdProvider);
+    ChatStorage.saveConversationId(convId);
+  }
+
+  Future<void> _loadSuggestions() async {
+    try {
+      final data = await ApiService.instance.getAiSuggestions();
+      final raw = data['suggestions'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      setState(() {
+        _suggestedQuestions = raw.map((s) {
+          final text = s is String ? s : (s as Map)['question']?.toString() ?? '';
+          return SuggestedQuestionMock(question: text, icon: _iconForSuggestion(text));
+        }).toList();
+      });
+    } catch (_) {
+      // Fallback — statik öneriler
+      if (!mounted) return;
+      setState(() {
+        _suggestedQuestions = const [
+          SuggestedQuestionMock(question: 'Nakit akışım nasıl görünüyor?', icon: Icons.account_balance_wallet_outlined),
+          SuggestedQuestionMock(question: 'Kritik stok durumu nedir?', icon: Icons.inventory_2_outlined),
+          SuggestedQuestionMock(question: 'Bu ay KDV borcum ne kadar?', icon: Icons.receipt_long_outlined),
+          SuggestedQuestionMock(question: 'Gecikmiş ödemelerim var mı?', icon: Icons.warning_amber_outlined),
+        ];
+      });
+    }
+  }
+
+  static IconData _iconForSuggestion(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('nakit') || lower.contains('finans')) return Icons.account_balance_wallet_outlined;
+    if (lower.contains('stok') || lower.contains('ürün')) return Icons.inventory_2_outlined;
+    if (lower.contains('kdv') || lower.contains('vergi')) return Icons.receipt_long_outlined;
+    if (lower.contains('gecik') || lower.contains('ödeme')) return Icons.warning_amber_outlined;
+    if (lower.contains('çalışan') || lower.contains('puantaj')) return Icons.groups_2_outlined;
+    if (lower.contains('tedarik')) return Icons.local_shipping_outlined;
+    return Icons.chat_outlined;
+  }
 
   @override
   void dispose() {
@@ -80,12 +127,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           controller: _scrollController,
           inputController: _inputController,
           onSubmit: _sendQuestion,
-          suggestedQuestions: const [
-            SuggestedQuestionMock(question: 'Nakit akışım nasıl görünüyor?', icon: Icons.account_balance_wallet_outlined),
-            SuggestedQuestionMock(question: 'Kritik stok durumu nedir?', icon: Icons.inventory_2_outlined),
-            SuggestedQuestionMock(question: 'Bu ay KDV borcum ne kadar?', icon: Icons.receipt_long_outlined),
-            SuggestedQuestionMock(question: 'Gecikmiş ödemelerim var mı?', icon: Icons.warning_amber_outlined),
-          ],
+          suggestedQuestions: _suggestedQuestions,
           onQuestionSelected: _sendQuestion,
           onFileAttached: (name) {
             _showMessage('$name eklendi.');
@@ -172,6 +214,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       _isTyping = false;
     });
     _scrollToBottom();
+    _persistChat();
   }
 
 
@@ -213,6 +256,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         _isTyping = false;
       });
       _scrollToBottom();
+      _persistChat();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -267,6 +311,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       );
       _messageCounter = 0;
     });
+    ChatStorage.clearMessages();
+    ChatStorage.saveConversationId(null);
 
     // Backend'deki eski session'ı temizle
     if (oldId != null) {
@@ -289,7 +335,7 @@ class _NewChatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF002045),
+      color: AppColors.primary,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,
@@ -330,7 +376,7 @@ class _AssistantIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -340,7 +386,7 @@ class _AssistantIntroCard extends StatelessWidget {
         ],
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF002045), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.primary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: const Padding(
@@ -351,7 +397,7 @@ class _AssistantIntroCard extends StatelessWidget {
             Text(
               'KOBİ AI Asistan',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
               ),
@@ -360,7 +406,7 @@ class _AssistantIntroCard extends StatelessWidget {
             Text(
               'Stok, finans, KDV ve puantaj verilerinizi analiz edebilirim.',
               style: TextStyle(
-                color: Color(0xFF0E5138),
+                color: AppColors.onSecondaryContainer,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
                 height: 1.45,
@@ -370,7 +416,7 @@ class _AssistantIntroCard extends StatelessWidget {
             Text(
               'Doğal Türkçe sorular sorun, sistem kayıtlarınızı yorumlayarak öneriler sunsun.',
               style: TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 14,
                 height: 1.35,
               ),

@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class AiStockSuggestionsCard extends StatelessWidget {
@@ -12,12 +13,12 @@ class AiStockSuggestionsCard extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.smart_toy_outlined, color: Color(0xFF2C694E), size: 20),
+            Icon(Icons.smart_toy_outlined, color: AppColors.secondary, size: 20),
             SizedBox(width: 8),
             Text(
               'AI STOK ÖNERİLERİ',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.1,
@@ -48,10 +49,10 @@ class _SuggestionTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF95D4B3), width: 3)),
+        border: Border(left: BorderSide(color: AppColors.secondaryLight, width: 3)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Padding(
@@ -59,7 +60,7 @@ class _SuggestionTile extends StatelessWidget {
         child: RichText(
           text: TextSpan(
             style: const TextStyle(
-              color: Color(0xFF191C1D),
+              color: AppColors.onSurface,
               fontSize: 13,
               height: 1.35,
             ),
@@ -73,11 +74,11 @@ class _SuggestionTile extends StatelessWidget {
   List<TextSpan> _spansFor(String value) {
     final highlights = <String, (Color, FontWeight)>{
       'En az 80 adet sipariş önerilir.': (
-        const Color(0xFF0E5138),
+        AppColors.onSecondaryContainer,
         FontWeight.w800,
       ),
-      '%31 arttı.': (const Color(0xFFBA1A1A), FontWeight.w800),
-      '%22 arttı.': (const Color(0xFF0E5138), FontWeight.w800),
+      '%31 arttı.': (AppColors.error, FontWeight.w800),
+      '%22 arttı.': (AppColors.onSecondaryContainer, FontWeight.w800),
     };
 
     for (final entry in highlights.entries) {

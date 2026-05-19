@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/section_card.dart';
@@ -43,7 +44,7 @@ class _EmployeeCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +64,7 @@ class _EmployeeCard extends StatelessWidget {
                     Text(
                       employee.position,
                       style: const TextStyle(
-                        color: Color(0xFF667085),
+                        color: AppColors.muted,
                         fontSize: 13,
                       ),
                     ),
@@ -109,16 +110,16 @@ class _Metric extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 106),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceUltraLight,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF667085), fontSize: 12),
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
           ),
           const SizedBox(height: 3),
           Text(

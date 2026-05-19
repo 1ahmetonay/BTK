@@ -5,12 +5,15 @@ Gemini ile trend analizi ve tahmin açıklaması üretir.
 """
 
 import json
+import logging
 import os
 
 import google.generativeai as genai
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.tool_registry import tool_registry
+
+logger = logging.getLogger(__name__)
 
 
 class ForecastAgent:
@@ -33,12 +36,18 @@ class ForecastAgent:
                 f"## Görev: {task}\n\n"
                 f"## Veri:\n```json\n{json.dumps(data, ensure_ascii=False, default=str)}\n```\n\n"
                 "Somut tarih ve tutar belirterek tahmin yap. "
-                "Güven seviyesini belirt (düşük/orta/yüksek). Türkçe yaz."
+                "Güven seviyesini belirt (düşük/orta/yüksek). "
+                "Türkçe yaz. Verileri çapraz değerlendir.\n"
+                "En iyi/en kötü/beklenen senaryo belirt.\n"
+                "Her tahmin için somut önleyici tedbir öner."
             )
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(temperature=0.5),
+            )
             return response.text or ""
         except Exception as e:
-            print(f"[WARN] ForecastAgent AI error: {e}")
+            logger.error(f"ForecastAgent AI tahmin hatasi: {e}", exc_info=True)
             return ""
 
     async def get_cash_forecast(self, db: AsyncSession, days: int = 90) -> dict:
@@ -49,7 +58,8 @@ class ForecastAgent:
         ai_tahmin = await self._ai_forecast(
             {"nakit_akisi": cashflow, "gecikmis_odemeler": overdue},
             f"{days} günlük nakit akışı tahmini. Hangi günlerde nakit sıkışması "
-            "olabilir? Önleyici tedbirler öner."
+            "olabilir? Gecikmiş tahsilatlar tahsil edilirse nakit nasıl değişir? "
+            "En iyi/en kötü senaryo ile birlikte somut önleyici tedbirler öner."
         )
 
         return {
@@ -67,7 +77,8 @@ class ForecastAgent:
         ai_tahmin = await self._ai_forecast(
             {"genel_durum": overview, "kritik_urunler": critical},
             "Stok eritme hızlarına bakarak hangi ürünler ne zaman tükenecek? "
-            "Sipariş planlaması için timeline öner."
+            "Her kritik ürün için tahmini tükenme tarihi ve önerilen sipariş "
+            "zamanlaması belirt. Toplam tedarik maliyetini hesapla."
         )
 
         return {
@@ -91,9 +102,13 @@ class ForecastAgent:
 
         ai_rapor = await self._ai_forecast(
             combined,
-            "Nakit, stok ve gelir-gider verilerini birlikte değerlendir. "
-            "Önümüzdeki 30 gün için bütünleşik risk haritası çıkar. "
-            "Hangi aksiyonlar hangi sırayla alınmalı?"
+            "Nakit, stok ve gelir-gider verilerini BİRLİKTE değerlendir. "
+            "Önümüzdeki 30 gün için bütünleşik risk haritası çıkar.\n"
+            "Şu çapraz analizleri yap:\n"
+            "1. Kritik stok tedarik maliyeti vs mevcut nakit → yeterli mi?\n"
+            "2. Kâr marjı trendi → düşüş varsa neden?\n"
+            "3. Nakit projeksiyonunda en riskli gün → hangi gider/ödeme çakışıyor?\n"
+            "Hangi aksiyonlar hangi sırayla alınmalı? Öncelik matrisi oluştur."
         )
 
         return {**combined, "ai_karar_destek": ai_rapor}

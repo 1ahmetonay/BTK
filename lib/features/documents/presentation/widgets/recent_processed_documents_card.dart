@@ -98,7 +98,7 @@ class _DocumentInfo extends StatelessWidget {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: AppColors.surfaceCool,
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(

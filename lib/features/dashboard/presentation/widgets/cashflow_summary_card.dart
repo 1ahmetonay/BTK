@@ -92,9 +92,9 @@ class CashflowSummaryCard extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7ED),
+                      color: AppColors.warningSurface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFCD9BD)),
+                      border: Border.all(color: AppColors.warningBorder),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

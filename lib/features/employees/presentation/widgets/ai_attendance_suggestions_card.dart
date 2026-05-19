@@ -24,7 +24,7 @@ class AiAttendanceSuggestionsCard extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: AppColors.surfaceUltraLight,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.line),
                 ),

@@ -40,23 +40,23 @@ class StatusBadge extends StatelessWidget {
   (Color, Color) _colorsFor(StatusTone tone) {
     return switch (tone) {
       StatusTone.success => (
-        const Color(0xFFDCFCE7),
+        AppColors.successContainer,
         AppColors.emerald,
       ),
       StatusTone.warning => (
-        const Color(0xFFFEF3C7),
+        AppColors.warningContainer,
         AppColors.amber,
       ),
       StatusTone.danger => (
-        const Color(0xFFFFE4E6),
+        AppColors.errorSurface,
         AppColors.rose,
       ),
       StatusTone.info => (
-        const Color(0xFFDBEAFE),
+        AppColors.infoContainer,
         AppColors.primary,
       ),
       StatusTone.neutral => (
-        const Color(0xFFF2F4F7),
+        AppColors.neutralContainer,
         AppColors.muted,
       ),
     };

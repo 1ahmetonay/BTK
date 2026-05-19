@@ -3,8 +3,9 @@ KOBİ AI Asistan — Güvenlik Servisi (JWT)
 Kimlik doğrulama, token oluşturma ve doğrulama işlemleri.
 """
 
+import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
@@ -14,10 +15,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-kobi-ai-key-change-in-production")
+logger = logging.getLogger(__name__)
+
+APP_ENV = os.getenv("APP_ENV", "development")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", str(60 * 24 * 7)))
-APP_ENV = os.getenv("APP_ENV", "development")
+
+# Secret key — production'da mutlaka JWT_SECRET env variable tanımlayın
+_jwt_secret_env = os.getenv("JWT_SECRET")
+if _jwt_secret_env:
+    SECRET_KEY = _jwt_secret_env
+else:
+    SECRET_KEY = os.urandom(32).hex()  # Her restart'ta farklı
+    if APP_ENV != "development":
+        logger.warning("JWT_SECRET tanımlanmamış! Production'da sabit bir key belirleyin.")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
@@ -28,7 +39,7 @@ class TokenData(BaseModel):
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

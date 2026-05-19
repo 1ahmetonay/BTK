@@ -1,15 +1,12 @@
 """
 KOBİ AI Asistan — Finans Router
-Gelir-gider, nakit akışı, KDV, ödemeler.
+Gelir-gider, nakit akisi, KDV, odemeler.
 """
 
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_db
 from services.finance_service import finance_service
@@ -19,42 +16,42 @@ router = APIRouter(prefix="/api/v1/finance", tags=["Finans"])
 
 @router.get("/pl")
 async def get_pl_summary(
-    ay: Optional[int] = Query(None, description="Ay (1-12)"),
-    yil: Optional[int] = Query(None, description="Yıl"),
+    ay: Optional[int] = Query(None, ge=1, le=12, description="Ay (1-12)"),
+    yil: Optional[int] = Query(None, ge=2020, le=2100, description="Yil"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Gelir-gider (P&L) özeti."""
+    """Gelir-gider (P&L) ozeti."""
     return await finance_service.get_pl_summary(db, ay=ay, yil=yil)
 
 
 @router.get("/cashflow")
 async def get_cashflow(
-    gun: int = Query(30, description="Geçmiş kaç gün"),
+    gun: int = Query(30, ge=1, le=365, description="Gecmis kac gun"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Nakit akışı özeti ve projeksiyonu."""
+    """Nakit akisi ozeti ve projeksiyonu."""
     return await finance_service.get_cashflow(db, gun=gun)
 
 
 @router.get("/kdv")
 async def get_kdv_summary(
-    ay: Optional[int] = Query(None),
-    yil: Optional[int] = Query(None),
+    ay: Optional[int] = Query(None, ge=1, le=12),
+    yil: Optional[int] = Query(None, ge=2020, le=2100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Aylık KDV beyanname özeti."""
+    """Aylik KDV beyanname ozeti."""
     return await finance_service.get_kdv_summary(db, ay=ay, yil=yil)
 
 
 @router.get("/overdue")
 async def get_overdue_payments(db: AsyncSession = Depends(get_db)):
-    """Gecikmiş ödemeler."""
+    """Gecikmis odemeler."""
     return await finance_service.get_overdue_payments(db)
 
 
 @router.get("/invoices")
 async def get_recent_invoices(
-    limit: int = Query(10, description="Son kaç fatura"),
+    limit: int = Query(10, ge=1, le=100, description="Son kac fatura"),
     db: AsyncSession = Depends(get_db),
 ):
     """Son faturalar."""

@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../finance_mock_data.dart';
@@ -19,19 +20,19 @@ class DistributionCard extends StatelessWidget {
         label: 'Perakende Satış',
         valueLabel: '%65',
         progress: 0.65,
-        color: Color(0xFF002045),
+        color: AppColors.primary,
       ),
       const DistributionItemMock(
         label: 'Online Sipariş',
         valueLabel: '%25',
         progress: 0.25,
-        color: Color(0xFF002045),
+        color: AppColors.primary,
       ),
       const DistributionItemMock(
         label: 'Personel Gideri',
         valueLabel: '%40',
         progress: 0.40,
-        color: Color(0xFFBA1A1A),
+        color: AppColors.error,
       ),
     ];
 
@@ -41,7 +42,7 @@ class DistributionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,7 +50,7 @@ class DistributionCard extends StatelessWidget {
           const Text(
             'GELİR/GİDER DAĞILIMI',
             style: TextStyle(
-              color: Color(0xFF002045),
+              color: AppColors.primary,
               fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.1,
@@ -81,7 +82,7 @@ class _DistributionLine extends StatelessWidget {
               child: Text(
                 item.label,
                 style: const TextStyle(
-                  color: Color(0xFF43474E),
+                  color: AppColors.mutedText,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -90,7 +91,7 @@ class _DistributionLine extends StatelessWidget {
             Text(
               item.valueLabel,
               style: const TextStyle(
-                color: Color(0xFF191C1D),
+                color: AppColors.onSurface,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
               ),
@@ -103,7 +104,7 @@ class _DistributionLine extends StatelessWidget {
           minHeight: 5,
           borderRadius: BorderRadius.circular(999),
           color: item.color,
-          backgroundColor: const Color(0xFFEDEEEF),
+          backgroundColor: AppColors.surfaceDim,
         ),
       ],
     );

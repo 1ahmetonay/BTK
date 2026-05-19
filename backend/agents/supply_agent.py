@@ -7,9 +7,6 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import Urun, Tedarikci, FiyatGecmisi
 from prompts.supply_agent_prompt import SUPPLY_AGENT_PROMPT
 

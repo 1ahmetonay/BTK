@@ -51,7 +51,7 @@ class DocumentAnalysisResultCard extends StatelessWidget {
             minHeight: 10,
             borderRadius: BorderRadius.circular(999),
             color: AppColors.primary,
-            backgroundColor: const Color(0xFFE5E7EB),
+            backgroundColor: AppColors.gray200,
           ),
           const SizedBox(height: 8),
           Text(

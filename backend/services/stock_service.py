@@ -9,9 +9,6 @@ from typing import Optional
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import Urun, StokHareket, FiyatGecmisi, Tedarikci
 from services.event_bus import event_bus, Events
 

@@ -24,7 +24,7 @@ class CashflowForecastCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,7 +32,7 @@ class CashflowForecastCard extends StatelessWidget {
           const Text(
             'NAKİT AKIŞI ÖNGÖRÜSÜ',
             style: TextStyle(
-              color: Color(0xFF002045),
+              color: AppColors.primary,
               fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.1,
@@ -48,7 +48,7 @@ class CashflowForecastCard extends StatelessWidget {
                 child: VerticalDivider(
                   width: 2,
                   thickness: 2,
-                  color: Color(0xFFC4C6CF),
+                  color: AppColors.outline,
                 ),
               ),
               Column(
@@ -85,10 +85,10 @@ class _TimelinePoint extends StatelessWidget {
           height: 24,
           decoration: BoxDecoration(
             color: point.tone == StatusTone.danger
-                ? const Color(0xFFFFDAD6)
+                ? AppColors.errorContainer
                 : index == 0
-                ? const Color(0xFF002045)
-                : const Color(0xFFEDEEEF),
+                ? AppColors.primary
+                : AppColors.surfaceDim,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 5),
             boxShadow: [
@@ -121,8 +121,8 @@ class _TimelinePoint extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: point.tone == StatusTone.danger
-                            ? const Color(0xFFBA1A1A)
-                            : const Color(0xFF43474E),
+                            ? AppColors.error
+                            : AppColors.mutedText,
                         fontSize: 11,
                         fontWeight: point.tone == StatusTone.danger
                             ? FontWeight.w900
@@ -135,7 +135,7 @@ class _TimelinePoint extends StatelessWidget {
                       padding: EdgeInsets.only(left: 4),
                       child: Icon(
                         Icons.priority_high,
-                        color: Color(0xFFBA1A1A),
+                        color: AppColors.error,
                         size: 13,
                       ),
                     ),
@@ -158,7 +158,7 @@ class _TimelinePoint extends StatelessWidget {
         if (point.tone == StatusTone.success)
           const Icon(
             Icons.check_circle_outline,
-            color: Color(0xFF2C694E),
+            color: AppColors.secondary,
             size: 18,
           )
         else if (point.tone == StatusTone.danger)
@@ -192,10 +192,10 @@ class _TimelinePoint extends StatelessWidget {
 
   Color _colorFor(StatusTone tone) {
     return switch (tone) {
-      StatusTone.success => const Color(0xFF2C694E),
+      StatusTone.success => AppColors.secondary,
       StatusTone.warning => AppColors.amber,
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.info => const Color(0xFF002045),
+      StatusTone.danger => AppColors.error,
+      StatusTone.info => AppColors.primary,
       StatusTone.neutral => AppColors.muted,
     };
   }

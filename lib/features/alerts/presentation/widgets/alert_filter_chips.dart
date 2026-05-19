@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../alerts_mock_data.dart';
@@ -33,17 +34,17 @@ class AlertFilterChips extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFF002045)
-                    : const Color(0xFFEDEEEF),
+                    ? AppColors.primary
+                    : AppColors.surfaceDim,
                 borderRadius: BorderRadius.circular(999),
                 border: selected
                     ? null
-                    : Border.all(color: const Color(0xFFC4C6CF)),
+                    : Border.all(color: AppColors.outline),
               ),
               child: Text(
                 filter.label,
                 style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF43474E),
+                  color: selected ? Colors.white : AppColors.mutedText,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),

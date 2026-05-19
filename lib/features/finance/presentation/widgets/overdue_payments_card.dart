@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/status_badge.dart';
@@ -21,7 +22,7 @@ class OverduePaymentsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
@@ -31,7 +32,7 @@ class OverduePaymentsCard extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: visiblePayments.length,
             separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                const Divider(height: 1, color: AppColors.outlineSoft),
             itemBuilder: (context, index) => _PaymentRow(
               payment: visiblePayments[index],
               onReminder: () =>
@@ -41,7 +42,7 @@ class OverduePaymentsCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Color(0xFFFFFFFF),
+              color: Colors.white,
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
             ),
             child: SizedBox(
@@ -52,7 +53,7 @@ class OverduePaymentsCard extends StatelessWidget {
                 icon: const Icon(Icons.description_outlined, size: 18),
                 label: const Text('Hatırlatma Taslağı Oluştur'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2C694E),
+                  backgroundColor: AppColors.secondary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -79,7 +80,7 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E3E4))),
+        border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: const Row(
@@ -88,7 +89,7 @@ class _Header extends StatelessWidget {
             child: Text(
               'VADESİ GEÇEN TAHSİLATLAR',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.1,
@@ -116,11 +117,11 @@ class _PaymentRow extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: const Color(0xFF1A365D),
+            backgroundColor: AppColors.primaryDark,
             child: Text(
               _initials(payment.customerName),
               style: const TextStyle(
-                color: Color(0xFFADC7F7),
+                color: AppColors.primaryLight,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
               ),
@@ -136,7 +137,7 @@ class _PaymentRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -147,7 +148,7 @@ class _PaymentRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 11,
                   ),
                 ),
@@ -158,8 +159,8 @@ class _PaymentRow extends StatelessWidget {
           OutlinedButton(
             onPressed: onReminder,
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF2C694E),
-              side: const BorderSide(color: Color(0xFF2C694E)),
+              foregroundColor: AppColors.secondary,
+              side: const BorderSide(color: AppColors.secondary),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

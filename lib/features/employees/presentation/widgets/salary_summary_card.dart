@@ -32,9 +32,9 @@ class SalarySummaryCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: AppColors.infoSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
+              border: Border.all(color: AppColors.infoBorder),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

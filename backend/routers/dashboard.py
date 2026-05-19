@@ -4,13 +4,11 @@ Ana sayfa özet verileri.
 """
 
 from datetime import date
+from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_db, BriefCache
 from services.stock_service import stock_service
@@ -93,7 +91,7 @@ async def get_morning_brief(db: AsyncSession = Depends(get_db)):
     return {"brief": brief, "source": "live"}
 
 
-async def _get_cached_brief(db: AsyncSession) -> str | None:
+async def _get_cached_brief(db: AsyncSession) -> Optional[str]:
     """Bugünün cache'lenmiş brifingi varsa döndürür."""
     today = date.today()
     result = await db.execute(

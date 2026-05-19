@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -210,7 +211,7 @@ class _SettingsIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -220,7 +221,7 @@ class _SettingsIntroCard extends StatelessWidget {
         ],
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF002045), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.primary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Padding(
@@ -231,7 +232,7 @@ class _SettingsIntroCard extends StatelessWidget {
             const Text(
               'Ayarlar',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
               ),
@@ -240,7 +241,7 @@ class _SettingsIntroCard extends StatelessWidget {
             const Text(
               'İşletme, AI asistan ve bildirim tercihlerinizi yönetin.',
               style: TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 14,
                 height: 1.45,
               ),
@@ -250,16 +251,16 @@ class _SettingsIntroCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
+                color: AppColors.infoSurface,
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: const Color(0xFFC4C6CF)),
+                border: Border.all(color: AppColors.outline),
               ),
               child: Text(
                 backendConnected
                     ? 'Backend bağlı. Veriler canlı olarak çekiliyor.'
                     : 'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.',
                 style: const TextStyle(
-                  color: Color(0xFF43474E),
+                  color: AppColors.mutedText,
                   fontSize: 12,
                   height: 1.35,
                 ),

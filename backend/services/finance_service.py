@@ -3,16 +3,17 @@ KOBİ AI Asistan — Finans Servisi
 Gelir-gider, KDV, nakit akışı, gecikmiş ödemeler.
 """
 
-from datetime import date, datetime, timedelta
+import calendar
+import logging
+from datetime import date, timedelta
 from typing import Optional
 
-from sqlalchemy import func, select, and_, or_
+from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import Fatura, FaturaKalem, NakitAkisi, KdvKayit, Uyari
+
+logger = logging.getLogger(__name__)
 
 
 class FinanceService:
@@ -20,12 +21,15 @@ class FinanceService:
 
     async def get_pl_summary(self, db: AsyncSession, ay: Optional[int] = None,
                               yil: Optional[int] = None) -> dict:
-        """Gelir-gider (P&L) özeti."""
+        """Gelir-gider (P&L) özeti.
+        Gelir: satış faturaları (net_tutar)
+        Gider: satın alma faturaları + maaş (Puantaj tablosundan) + kira (NakitAkisi)
+        """
         today = date.today()
         ay = ay or today.month
         yil = yil or today.year
 
-        # Satış gelirleri
+        # Satış gelirleri (Fatura tablosundan)
         result = await db.execute(
             select(func.sum(Fatura.net_tutar)).where(
                 and_(
@@ -37,7 +41,7 @@ class FinanceService:
         )
         gelir = result.scalar() or 0
 
-        # Satın alma giderleri
+        # Satın alma giderleri (Fatura tablosundan)
         result = await db.execute(
             select(func.sum(Fatura.net_tutar)).where(
                 and_(
@@ -47,21 +51,9 @@ class FinanceService:
                 )
             )
         )
-        gider = result.scalar() or 0
+        satin_alma_gider = result.scalar() or 0
 
-        # Diğer giderler (maaş, kira vs) nakit akışından
-        result = await db.execute(
-            select(func.sum(NakitAkisi.cikis)).where(
-                and_(
-                    NakitAkisi.kategori.in_(["maas", "kira", "fatura"]),
-                    func.extract("month", NakitAkisi.tarih) == ay,
-                    func.extract("year", NakitAkisi.tarih) == yil,
-                )
-            )
-        )
-        diger_gider = result.scalar() or 0
-
-        # Maaş giderleri (puantajdan gerçek hesaplama)
+        # Maaş giderleri (Puantaj tablosundan — gerçek hesaplama)
         from database import Puantaj
         result = await db.execute(
             select(func.sum(Puantaj.brut_maas)).where(
@@ -70,7 +62,7 @@ class FinanceService:
         )
         maas_gideri = result.scalar() or 0
 
-        # Kira gideri (nakit akışından)
+        # Kira gideri (NakitAkisi tablosundan)
         result = await db.execute(
             select(func.sum(NakitAkisi.cikis)).where(
                 and_(
@@ -82,28 +74,28 @@ class FinanceService:
         )
         kira_gideri = result.scalar() or 0
 
-        toplam_gider = gider + maas_gideri + kira_gideri + diger_gider
+        toplam_gider = satin_alma_gider + maas_gideri + kira_gideri
         kar = gelir - toplam_gider
         kar_marji = round((kar / gelir * 100), 1) if gelir > 0 else 0
 
         return {
             "donem": f"{ay}/{yil}",
             "gelir": round(gelir, 2),
-            "satin_alma_gideri": round(gider, 2),
-            "diger_giderler": round(diger_gider, 2),
+            "satin_alma_gideri": round(satin_alma_gider, 2),
             "toplam_gider": round(toplam_gider, 2),
             "net_kar": round(kar, 2),
             "kar_marji_yuzde": kar_marji,
             "gider_dagilimi": [
-                {"kategori": "Satın Alma", "tutar": round(gider, 2)},
+                {"kategori": "Satın Alma", "tutar": round(satin_alma_gider, 2)},
                 {"kategori": "Maaş", "tutar": round(maas_gideri, 2)},
                 {"kategori": "Kira", "tutar": round(kira_gideri, 2)},
-                {"kategori": "Diğer", "tutar": round(diger_gider, 2)},
             ],
         }
 
     async def get_cashflow(self, db: AsyncSession, gun: int = 30) -> dict:
-        """Nakit akışı özeti ve projeksiyonu."""
+        """Nakit akışı özeti ve projeksiyonu.
+        Bakiye = toplam giriş - toplam çıkış (running total, bakiye alanına güvenmez).
+        """
         today = date.today()
         start = today - timedelta(days=gun)
 
@@ -116,9 +108,18 @@ class FinanceService:
 
         toplam_giris = sum(r.giris for r in records)
         toplam_cikis = sum(r.cikis for r in records)
-        mevcut_bakiye = records[-1].bakiye if records else 0
 
-        # Basit projeksiyon
+        # Bakiyeyi dinamik hesapla: tüm zamanların toplam giriş - çıkış
+        all_result = await db.execute(
+            select(
+                func.sum(NakitAkisi.giris).label("total_in"),
+                func.sum(NakitAkisi.cikis).label("total_out"),
+            )
+        )
+        row = all_result.one()
+        mevcut_bakiye = (row.total_in or 0) - (row.total_out or 0)
+
+        # Basit projeksiyon (günlük ortalamaya dayalı)
         daily_avg_in = toplam_giris / max(gun, 1)
         daily_avg_out = toplam_cikis / max(gun, 1)
         net_daily = daily_avg_in - daily_avg_out
@@ -158,7 +159,10 @@ class FinanceService:
 
     async def get_kdv_summary(self, db: AsyncSession, ay: Optional[int] = None,
                                yil: Optional[int] = None) -> dict:
-        """Aylık KDV beyanname özeti."""
+        """Aylık KDV beyanname özeti.
+        Türkiye'de KDV beyannamesi bir sonraki ayın 26'sına kadar verilir.
+        Örn: Mayıs KDV'si → Haziran 26'ya kadar.
+        """
         today = date.today()
         ay = ay or today.month
         yil = yil or today.year
@@ -189,10 +193,13 @@ class FinanceService:
 
         odenecek = max(hesaplanan - indirilecek, 0)
 
-        # Beyanname son tarihi (her ayın 26'sı)
-        import calendar
-        last_day = min(26, calendar.monthrange(yil, ay)[1])
-        son_tarih = date(yil, ay, last_day)
+        # Beyanname son tarihi: bir sonraki ayın 26'sı
+        if ay == 12:
+            son_ay, son_yil = 1, yil + 1
+        else:
+            son_ay, son_yil = ay + 1, yil
+        last_day = min(26, calendar.monthrange(son_yil, son_ay)[1])
+        son_tarih = date(son_yil, son_ay, last_day)
         kalan_gun = (son_tarih - today).days
 
         return {

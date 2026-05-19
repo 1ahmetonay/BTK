@@ -10,9 +10,6 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import (
     Fatura, FaturaKalem, Urun, StokHareket, KdvKayit, NakitAkisi,
     Calisan, Puantaj, Uyari,
@@ -275,8 +272,13 @@ class DocumentService:
         }
 
     async def _match_product(self, db: AsyncSession, urun_adi: str) -> Optional[int]:
-        """Ürün adını veritabanındaki ürünlerle eşleştirir."""
-        # Tam eşleşme
+        """Ürün adını veritabanındaki ürünlerle eşleştirir.
+        Üç aşamalı: tam eşleşme → normalize eşleşme → kelime bazlı eşleşme.
+        """
+        if not urun_adi or not urun_adi.strip():
+            return None
+
+        # 1. Tam eşleşme
         result = await db.execute(
             select(Urun.id).where(Urun.isim == urun_adi)
         )
@@ -284,12 +286,55 @@ class DocumentService:
         if urun_id:
             return urun_id
 
-        # Kısmi eşleşme
+        # 2. Normalize edilmiş kısmi eşleşme (küçük harf, birim kısaltmaları standardize)
+        normalized = self._normalize_product_name(urun_adi)
         result = await db.execute(
-            select(Urun.id).where(Urun.isim.ilike(f"%{urun_adi}%"))
+            select(Urun.id).where(Urun.isim.ilike(f"%{normalized}%"))
         )
         urun_id = result.scalar_one_or_none()
-        return urun_id
+        if urun_id:
+            return urun_id
+
+        # 3. Kelime bazlı eşleşme — ürün adındaki her kelimeyi ayrı ayrı ara
+        words = [w for w in normalized.split() if len(w) > 2]
+        if words:
+            # İlk anlamlı kelime ile ara (genelde ürün adının özü)
+            result = await db.execute(
+                select(Urun.id, Urun.isim).where(Urun.isim.ilike(f"%{words[0]}%"))
+            )
+            candidates = result.all()
+            if len(candidates) == 1:
+                return candidates[0][0]
+            # Birden fazla aday varsa, en çok kelime eşleşeni seç
+            if candidates:
+                best_match = None
+                best_score = 0
+                for cid, cname in candidates:
+                    cname_lower = cname.lower()
+                    score = sum(1 for w in words if w in cname_lower)
+                    if score > best_score:
+                        best_score = score
+                        best_match = cid
+                return best_match
+
+        return None
+
+    @staticmethod
+    def _normalize_product_name(name: str) -> str:
+        """Ürün adını normalize eder: birim kısaltmalarını standardize et."""
+        normalized = name.lower().strip()
+        # Yaygın birim varyasyonları
+        replacements = {
+            "gr": "g", "gram": "g",
+            "kg": "kg", "kilogram": "kg",
+            "lt": "l", "litre": "l", "liter": "l",
+            "ml": "ml", "mililitre": "ml",
+            "ad.": "adet", "ad": "adet",
+        }
+        for old, new in replacements.items():
+            # Sadece kelime sınırında değiştir
+            normalized = normalized.replace(old, new)
+        return normalized
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[date]:
         """Tarih string'ini date objesine çevirir."""

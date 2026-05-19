@@ -26,7 +26,7 @@ class AlertsListCard extends StatelessWidget {
         const Text(
           'AKTİF UYARILAR',
           style: TextStyle(
-            color: Color(0xFF43474E),
+            color: AppColors.mutedText,
             fontSize: 12,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.1,
@@ -75,9 +75,9 @@ class _AlertTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isResolved ? const Color(0xFFEDEEEF) : Colors.white,
+        color: isResolved ? AppColors.surfaceDim : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -97,7 +97,7 @@ class _AlertTile extends StatelessWidget {
               Text(
                 _timeLabel(alert.timeLabel),
                 style: const TextStyle(
-                  color: Color(0xFF43474E),
+                  color: AppColors.mutedText,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -108,7 +108,7 @@ class _AlertTile extends StatelessWidget {
           Text(
             _title(alert),
             style: const TextStyle(
-              color: Color(0xFF191C1D),
+              color: AppColors.onSurface,
               fontSize: 14,
               fontWeight: FontWeight.w900,
               height: 1.25,
@@ -118,7 +118,7 @@ class _AlertTile extends StatelessWidget {
           Text(
             _description(alert),
             style: const TextStyle(
-              color: Color(0xFF43474E),
+              color: AppColors.mutedText,
               fontSize: 13,
               height: 1.35,
             ),
@@ -253,7 +253,7 @@ class _ActionButton extends StatelessWidget {
         child: FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF002045),
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 6),
             shape: RoundedRectangleBorder(
@@ -274,8 +274,8 @@ class _ActionButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF191C1D),
-          side: const BorderSide(color: Color(0xFFC4C6CF)),
+          foregroundColor: AppColors.onSurface,
+          side: const BorderSide(color: AppColors.outline),
           padding: const EdgeInsets.symmetric(horizontal: 6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
@@ -297,7 +297,7 @@ class _EmptyAlerts extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: const Column(
         children: [

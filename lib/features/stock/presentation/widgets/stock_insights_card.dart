@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../stock_mock_data.dart';
@@ -33,7 +34,7 @@ class _InsightMiniCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -46,7 +47,7 @@ class _InsightMiniCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Color(0xFF191C1D),
+                color: AppColors.onSurface,
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
                 height: 1.15,
@@ -61,7 +62,7 @@ class _InsightMiniCard extends StatelessWidget {
               value: insight.progress.clamp(0.08, 0.92),
               strokeWidth: 4,
               color: insight.color,
-              backgroundColor: const Color(0xFFE1E3E4),
+              backgroundColor: AppColors.outlineSoft,
             ),
           ),
           const SizedBox(height: 8),

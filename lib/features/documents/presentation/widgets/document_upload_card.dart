@@ -39,7 +39,7 @@ class DocumentUploadCard extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: AppColors.infoSurface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -98,12 +98,12 @@ class DocumentUploadCard extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
+                    color: AppColors.infoLighter,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.image_outlined,
-                    color: Color(0xFF075985),
+                    color: AppColors.infoDark,
                   ),
                 ),
                 const SizedBox(width: 12),

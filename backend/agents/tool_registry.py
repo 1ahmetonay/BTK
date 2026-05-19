@@ -7,9 +7,6 @@ Gemini Function Calling ile uyumlu tool definitions.
 from typing import Dict, Any, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from services.stock_service import stock_service
 from services.finance_service import finance_service
 

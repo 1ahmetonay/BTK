@@ -8,9 +8,6 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import get_db, Calisan, Puantaj
 from services.document_service import document_service
 
@@ -63,8 +60,8 @@ async def get_employees(db: AsyncSession = Depends(get_db)):
 
 @router.get("/payroll")
 async def get_payroll(
-    ay: Optional[int] = Query(None),
-    yil: Optional[int] = Query(None),
+    ay: Optional[int] = Query(None, ge=1, le=12),
+    yil: Optional[int] = Query(None, ge=2020, le=2100),
     db: AsyncSession = Depends(get_db),
 ):
     """Belirli ay/yıl için maaş bordrosu."""

@@ -28,7 +28,7 @@ class AiSuggestionsCard extends StatelessWidget {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: AppColors.surfaceUltraLight,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.line),
                     ),
@@ -39,7 +39,7 @@ class AiSuggestionsCard extends StatelessWidget {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDBEAFE),
+                            color: AppColors.infoContainer,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(

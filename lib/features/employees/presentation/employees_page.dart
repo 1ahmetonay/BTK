@@ -40,6 +40,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
   String _selectedFileName = '';
   bool _loading = true;
   bool _isLiveData = false;
+  String? _error;
   List<int>? _pickedFileBytes;
   String _pickedFileName = '';
   int _totalWorkDays = 0;
@@ -259,9 +260,13 @@ class _EmployeesPageState extends State<EmployeesPage> {
         _totalLeaveDays = toplamIzin;
         _loading = false;
       });
-    } catch (_) {
-      // Backend bağlantısı yoksa boş kalır
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Puantaj verileri yüklenemedi: $e';
+        });
+      }
     }
   }
 
@@ -280,6 +285,29 @@ class _EmployeesPageState extends State<EmployeesPage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() { _loading = true; _error = null; });
+                _fetchData();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
@@ -550,7 +578,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF43474E))),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.mutedText)),
           Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
         ],
       ),

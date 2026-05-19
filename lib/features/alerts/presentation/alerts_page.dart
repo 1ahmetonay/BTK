@@ -22,6 +22,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
   bool _apiLoaded = false;
   String _dailySummary = '';
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -85,8 +86,13 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
         _dailySummary = liveSummary;
         _loading = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Uyarılar yüklenemedi: $e';
+        });
+      }
     }
   }
 
@@ -112,6 +118,29 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() { _loading = true; _error = null; });
+                _fetchAlerts();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      );
     }
 
     final visibleAlerts = _filteredAlerts();
@@ -298,13 +327,13 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FFF4),
+                    color: AppColors.successBg,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF95D4B3)),
+                    border: Border.all(color: AppColors.secondaryLight),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, size: 16, color: Color(0xFF2C694E)),
+                      Icon(Icons.info_outline, size: 16, color: AppColors.secondary),
                       SizedBox(width: 8),
                       Expanded(child: Text('Stok Yönetimi sayfasından tedarikçi karşılaştırması yapabilirsiniz.', style: TextStyle(fontSize: 12))),
                     ],
@@ -319,7 +348,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -345,13 +374,13 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
+                    color: AppColors.warningSurface,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFCD9BD)),
+                    border: Border.all(color: AppColors.warningBorder),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, size: 16, color: Color(0xFFC6955E)),
+                      Icon(Icons.info_outline, size: 16, color: AppColors.warning),
                       SizedBox(width: 8),
                       Expanded(child: Text('Finans sayfasından gecikmiş ödemeler için hatırlatma taslağı oluşturabilirsiniz.', style: TextStyle(fontSize: 12))),
                     ],
@@ -366,7 +395,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -390,13 +419,13 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
+                    color: AppColors.warningContainer,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFF59E0B)),
+                    border: Border.all(color: AppColors.warningAmber),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.warning_amber_outlined, size: 16, color: Color(0xFFF59E0B)),
+                      Icon(Icons.warning_amber_outlined, size: 16, color: AppColors.warningAmber),
                       SizedBox(width: 8),
                       Expanded(child: Text('Finans sayfasındaki KDV özet kartından detaylı bilgi alabilirsiniz.', style: TextStyle(fontSize: 12))),
                     ],
@@ -411,7 +440,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -443,7 +472,7 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
                   Navigator.of(ctx).pop();
                   _resolveAlert(alert);
                 },
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Çözüldü Olarak İşaretle'),
               ),
             ],
@@ -504,10 +533,10 @@ class _AlertsIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF002045), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.primary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: const Padding(
@@ -518,7 +547,7 @@ class _AlertsIntroCard extends StatelessWidget {
               child: Text(
                 'Proaktif riskleri ve bekleyen aksiyonları yönetin.',
                 style: TextStyle(
-                  color: Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   fontSize: 14,
                   height: 1.35,
                 ),
@@ -527,7 +556,7 @@ class _AlertsIntroCard extends StatelessWidget {
             SizedBox(width: 12),
             Icon(
               Icons.notifications_active,
-              color: Color(0xFF002045),
+              color: AppColors.primary,
               size: 32,
             ),
           ],
@@ -569,27 +598,27 @@ class _SummaryTile extends StatelessWidget {
     final critical = summary.trendTone == StatusTone.danger;
     final success = summary.trendTone == StatusTone.success;
     final color = critical
-        ? const Color(0xFFBA1A1A)
+        ? AppColors.error
         : success
-        ? const Color(0xFF2C694E)
-        : const Color(0xFF002045);
+        ? AppColors.secondary
+        : AppColors.primary;
 
     return Container(
       width: 142,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: critical
-            ? const Color(0xFFFFDAD6)
+            ? AppColors.errorContainer
             : success
-            ? const Color(0xFFAEEECB)
+            ? AppColors.successLight
             : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: critical
-              ? const Color(0xFFBA1A1A)
+              ? AppColors.error
               : success
-              ? const Color(0xFF2C694E)
-              : const Color(0xFFC4C6CF),
+              ? AppColors.secondary
+              : AppColors.outline,
         ),
       ),
       child: Column(
@@ -601,8 +630,8 @@ class _SummaryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: critical
-                  ? const Color(0xFF93000A)
-                  : const Color(0xFF43474E),
+                  ? AppColors.errorDark
+                  : AppColors.mutedText,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -623,8 +652,8 @@ class _SummaryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: critical
-                  ? const Color(0xFF93000A)
-                  : const Color(0xFF43474E),
+                  ? AppColors.errorDark
+                  : AppColors.mutedText,
               fontSize: 11,
             ),
           ),
@@ -656,10 +685,10 @@ class _DailySummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF2C694E), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.secondary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Padding(
@@ -667,7 +696,7 @@ class _DailySummaryCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.auto_awesome, color: Color(0xFF2C694E), size: 20),
+            const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -676,7 +705,7 @@ class _DailySummaryCard extends StatelessWidget {
                   const Text(
                     'AI Günlük Özeti',
                     style: TextStyle(
-                      color: Color(0xFF2C694E),
+                      color: AppColors.secondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
                     ),
@@ -685,7 +714,7 @@ class _DailySummaryCard extends StatelessWidget {
                   Text(
                     summary,
                     style: const TextStyle(
-                      color: Color(0xFF43474E),
+                      color: AppColors.mutedText,
                       fontSize: 13,
                       height: 1.45,
                     ),
@@ -730,7 +759,7 @@ class _ResolvedAlertStrip extends StatelessWidget {
             const SizedBox(height: 4),
             Text(alert.recommendedAction, style: const TextStyle(fontSize: 13, height: 1.4)),
             const SizedBox(height: 10),
-            Text('Zaman: ${alert.timeLabel}', style: const TextStyle(fontSize: 12, color: Color(0xFF43474E))),
+            Text('Zaman: ${alert.timeLabel}', style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
           ],
         ),
         actions: [
@@ -749,10 +778,10 @@ class _ResolvedAlertStrip extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEEEF),
+        color: AppColors.surfaceDim,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFC4C6CF),
+          color: AppColors.outline,
           style: BorderStyle.solid,
         ),
       ),
@@ -760,7 +789,7 @@ class _ResolvedAlertStrip extends StatelessWidget {
         children: [
           const Icon(
             Icons.check_circle_outline,
-            color: Color(0xFF2C694E),
+            color: AppColors.secondary,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -769,7 +798,7 @@ class _ResolvedAlertStrip extends StatelessWidget {
               alert.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF43474E), fontSize: 13),
+              style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
             ),
           ),
           const SizedBox(width: 8),
@@ -778,7 +807,7 @@ class _ResolvedAlertStrip extends StatelessWidget {
           TextButton(
             onPressed: () => _showDetail(context),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF002045),
+              foregroundColor: AppColors.primary,
               padding: EdgeInsets.zero,
               minimumSize: const Size(42, 32),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

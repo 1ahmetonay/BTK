@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../settings_mock_data.dart';
@@ -32,7 +33,7 @@ class SettingsSidePanel extends StatelessWidget {
               const Text(
                 'AKTİF MODÜLLER',
                 style: TextStyle(
-                  color: Color(0xFF43474E),
+                  color: AppColors.mutedText,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.1,
@@ -52,7 +53,7 @@ class SettingsSidePanel extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.check_circle_outline,
-                          color: Color(0xFF2C694E),
+                          color: AppColors.secondary,
                           size: 14,
                         ),
                         const SizedBox(width: 7),
@@ -79,7 +80,7 @@ class SettingsSidePanel extends StatelessWidget {
               const Text(
                 'Son Etkinlikler',
                 style: TextStyle(
-                  color: Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -90,7 +91,7 @@ class SettingsSidePanel extends StatelessWidget {
                 title: 'AI Modu Değiştirildi',
                 time: '10 dakika önce',
               ),
-              const Divider(height: 1, color: Color(0xFFE1E3E4)),
+              const Divider(height: 1, color: AppColors.outlineSoft),
               _ActivityRow(
                 icon: Icons.notifications_outlined,
                 title: 'Bildirim Saati Güncellendi',
@@ -123,8 +124,8 @@ class _ActivityRow extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFFE7E8E9),
-            child: Icon(icon, color: const Color(0xFF002045), size: 19),
+            backgroundColor: AppColors.surfaceHigh,
+            child: Icon(icon, color: AppColors.primary, size: 19),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -134,7 +135,7 @@ class _ActivityRow extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
@@ -143,7 +144,7 @@ class _ActivityRow extends StatelessWidget {
                 Text(
                   time,
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 11,
                   ),
                 ),
@@ -169,7 +170,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: child,
     );

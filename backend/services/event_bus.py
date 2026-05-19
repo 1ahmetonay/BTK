@@ -4,8 +4,11 @@ Fatura yüklendiğinde stok, KDV, nakit akışı ajanlarını tetikler.
 """
 
 import asyncio
+import logging
 from collections import defaultdict
 from typing import Any, Callable, Coroutine
+
+logger = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -35,7 +38,7 @@ class EventBus:
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                print(f"[WARN] Event '{event_name}' handler error: {result}")
+                logger.error(f"Event '{event_name}' handler hatasi: {result}", exc_info=result)
 
         return results
 

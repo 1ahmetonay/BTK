@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -76,7 +77,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
           decoration: const BoxDecoration(
-            color: Color(0xFF002045),
+            color: AppColors.primary,
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Row(
@@ -97,7 +98,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                     ),
                     Text(
                       'UBL-TR 1.2 • QR Kod • PDF',
-                      style: TextStyle(color: Color(0xFFAEEECB), fontSize: 12),
+                      style: TextStyle(color: AppColors.successLight, fontSize: 12),
                     ),
                   ],
                 ),
@@ -166,7 +167,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Kalem Ekle'),
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF1a4d2e),
+                          foregroundColor: AppColors.emeraldDark,
                         ),
                       ),
                     ],
@@ -182,9 +183,9 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4F8F6),
+                      color: AppColors.secondaryBg,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFD0E8DB)),
+                      border: Border.all(color: AppColors.secondaryBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -230,7 +231,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                       : const Icon(Icons.send),
                   label: Text(_loading ? 'Oluşturuluyor...' : 'Fatura Kes'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1a4d2e),
+                    backgroundColor: AppColors.emeraldDark,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
@@ -328,7 +329,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
             style: TextStyle(
               fontSize: large ? 15 : 13,
               fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
-              color: const Color(0xFF43474E),
+              color: AppColors.mutedText,
             ),
           ),
           const SizedBox(width: 24),
@@ -337,7 +338,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
             style: TextStyle(
               fontSize: large ? 16 : 13,
               fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
-              color: bold ? const Color(0xFF002045) : const Color(0xFF1a4d2e),
+              color: bold ? AppColors.primary : AppColors.emeraldDark,
             ),
           ),
         ],
@@ -356,7 +357,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle, color: Color(0xFF1a4d2e), size: 56),
+          const Icon(Icons.check_circle, color: AppColors.emeraldDark, size: 56),
           const SizedBox(height: 16),
           const Text(
             'E-Fatura Oluşturuldu',
@@ -371,7 +372,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
           const Text(
             'PDF, UBL-TR XML ve QR kod başarıyla üretildi.\nStok ve nakit akışı otomatik güncellendi.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Color(0xFF43474E), height: 1.5),
+            style: TextStyle(fontSize: 13, color: AppColors.mutedText, height: 1.5),
           ),
           const SizedBox(height: 24),
           Row(
@@ -389,7 +390,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
                   icon: const Icon(Icons.download),
                   label: const Text('PDF İndir'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1a4d2e),
+                    backgroundColor: AppColors.emeraldDark,
                   ),
                 ),
               ],
@@ -410,7 +411,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF43474E)),
+              style: const TextStyle(fontSize: 13, color: AppColors.mutedText),
               textAlign: TextAlign.right,
             ),
           ),
@@ -434,7 +435,7 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('PDF hazır (${(bytes.length / 1024).toStringAsFixed(1)} KB)'),
-          backgroundColor: const Color(0xFF1a4d2e),
+          backgroundColor: AppColors.emeraldDark,
         ),
       );
     } catch (_) {
@@ -501,11 +502,11 @@ class _EFaturaDialogState extends State<_EFaturaDialog> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFC4C6CF)),
+        borderSide: const BorderSide(color: AppColors.outline),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF1a4d2e), width: 1.5),
+        borderSide: const BorderSide(color: AppColors.emeraldDark, width: 1.5),
       ),
     );
   }

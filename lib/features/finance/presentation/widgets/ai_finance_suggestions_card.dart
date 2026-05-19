@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../finance_mock_data.dart';
@@ -15,12 +16,12 @@ class AiFinanceSuggestionsCard extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.auto_awesome, color: Color(0xFF2C694E), size: 18),
+            Icon(Icons.auto_awesome, color: AppColors.secondary, size: 18),
             SizedBox(width: 8),
             Text(
               'AI ÖNERİLERİ',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.1,
@@ -58,15 +59,15 @@ class _AiSuggestionCard extends StatelessWidget {
     return Container(
       width: 280,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(left: BorderSide(color: Color(0xFF2C694E), width: 4)),
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+        border: const Border(left: BorderSide(color: AppColors.secondary, width: 4)),
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 4,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -78,7 +79,7 @@ class _AiSuggestionCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF002045),
+              color: AppColors.primary,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -88,7 +89,7 @@ class _AiSuggestionCard extends StatelessWidget {
             child: Text(
               _message,
               style: const TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 13,
                 height: 1.35,
               ),
@@ -100,7 +101,7 @@ class _AiSuggestionCard extends StatelessWidget {
             child: FilledButton(
               onPressed: () => onApply?.call(_message),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2C694E),
+                backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

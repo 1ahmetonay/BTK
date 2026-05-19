@@ -16,7 +16,7 @@ class FinanceMovementsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
@@ -26,14 +26,14 @@ class FinanceMovementsCard extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: movements.take(3).length,
             separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                const Divider(height: 1, color: AppColors.outlineSoft),
             itemBuilder: (context, index) =>
                 _MovementRow(movement: movements[index], index: index),
           ),
           TextButton(
             onPressed: onShowAll ?? () {},
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF002045),
+              foregroundColor: AppColors.primary,
               minimumSize: const Size.fromHeight(46),
             ),
             child: const Text('Tümünü Gör'),
@@ -52,7 +52,7 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E3E4))),
+        border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: const Row(
@@ -61,14 +61,14 @@ class _Header extends StatelessWidget {
             child: Text(
               'SON HAREKETLER',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.1,
               ),
             ),
           ),
-          Icon(Icons.history, color: Color(0xFF002045), size: 18),
+          Icon(Icons.history, color: AppColors.primary, size: 18),
         ],
       ),
     );
@@ -94,8 +94,8 @@ class _MovementRow extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: movement.tone == StatusTone.success
-                  ? const Color(0xFFEFF8F3)
-                  : const Color(0xFFEDEEEF),
+                  ? AppColors.successSurface
+                  : AppColors.surfaceDim,
               shape: BoxShape.circle,
             ),
             child: Icon(_icon, color: _iconColor, size: 19),
@@ -110,7 +110,7 @@ class _MovementRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -121,7 +121,7 @@ class _MovementRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 11,
                   ),
                 ),
@@ -179,15 +179,15 @@ class _MovementRow extends StatelessWidget {
   }
 
   Color get _iconColor {
-    return index == 1 ? const Color(0xFF2C694E) : const Color(0xFF002045);
+    return index == 1 ? AppColors.secondary : AppColors.primary;
   }
 
   Color _colorFor(StatusTone tone) {
     return switch (tone) {
-      StatusTone.success => const Color(0xFF2C694E),
+      StatusTone.success => AppColors.secondary,
       StatusTone.warning => AppColors.amber,
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.info => const Color(0xFF002045),
+      StatusTone.danger => AppColors.error,
+      StatusTone.info => AppColors.primary,
       StatusTone.neutral => AppColors.muted,
     };
   }

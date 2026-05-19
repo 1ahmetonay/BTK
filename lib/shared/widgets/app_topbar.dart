@@ -32,8 +32,8 @@ class AppTopbar extends StatelessWidget {
             height: compact ? 56 : 64,
             padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 18),
             decoration: const BoxDecoration(
-              color: Color(0xFFF8F9FA),
-              border: Border(bottom: BorderSide(color: Color(0xFFC4C6CF))),
+              color: AppColors.surfaceContainerLow,
+              border: Border(bottom: BorderSide(color: AppColors.outline)),
             ),
             child: Row(
               children: [
@@ -43,7 +43,7 @@ class AppTopbar extends StatelessWidget {
                       return IconButton(
                         tooltip: 'Menüyü aç',
                         onPressed: () => Scaffold.of(context).openDrawer(),
-                        color: const Color(0xFF191C1D),
+                        color: AppColors.onSurface,
                         icon: const Icon(Icons.menu),
                       );
                     },
@@ -60,7 +60,7 @@ class AppTopbar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: const Color(0xFF002045),
+                          color: AppColors.primary,
                           fontSize: compact ? 18 : 20,
                           fontWeight: FontWeight.w800,
                         ),
@@ -102,13 +102,13 @@ class AppTopbar extends StatelessWidget {
                 IconButton(
                   tooltip: 'Bildirimler',
                   onPressed: onAlertsPressed,
-                  color: const Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   icon: const Icon(Icons.notifications_none_outlined),
                 ),
                 IconButton(
                   tooltip: 'Ayarlar',
                   onPressed: onSettingsPressed,
-                  color: const Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   icon: const Icon(Icons.settings_outlined),
                 ),
               ],

@@ -18,9 +18,9 @@ class ToolChips extends StatelessWidget {
             (tool) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0xFFEDEEEF),
+                color: AppColors.surfaceDim,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFC4C6CF)),
+                border: Border.all(color: AppColors.outline),
               ),
               child: Text(
                 tool.name,

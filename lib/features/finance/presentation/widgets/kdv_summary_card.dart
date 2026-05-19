@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/status_badge.dart';
@@ -15,7 +16,7 @@ class KdvSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
@@ -35,7 +36,7 @@ class KdvSummaryCard extends StatelessWidget {
                     Container(
                       width: 1,
                       height: 42,
-                      color: const Color(0xFFC4C6CF),
+                      color: AppColors.outline,
                     ),
                     Expanded(
                       child: Padding(
@@ -43,14 +44,14 @@ class KdvSummaryCard extends StatelessWidget {
                         child: _VatMetric(
                           label: 'İndirilecek KDV',
                           value: summary.deductibleVat,
-                          valueColor: const Color(0xFF2C694E),
+                          valueColor: AppColors.secondary,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                const Divider(height: 1, color: AppColors.outlineSoft),
                 const SizedBox(height: 14),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -65,7 +66,7 @@ class KdvSummaryCard extends StatelessWidget {
                     FilledButton(
                       onPressed: onDetails ?? () {},
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF002045),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -84,7 +85,7 @@ class KdvSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E8E9),
+                    color: AppColors.surfaceHigh,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -92,7 +93,7 @@ class KdvSummaryCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.warning_amber_outlined,
-                        color: Color(0xFFBA1A1A),
+                        color: AppColors.error,
                         size: 18,
                       ),
                       const SizedBox(width: 10),
@@ -100,7 +101,7 @@ class KdvSummaryCard extends StatelessWidget {
                         child: Text(
                           _warningText(summary.warning),
                           style: const TextStyle(
-                            color: Color(0xFF43474E),
+                            color: AppColors.mutedText,
                             fontSize: 12,
                             height: 1.35,
                             fontStyle: FontStyle.italic,
@@ -137,8 +138,8 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E3E4))),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
@@ -152,7 +153,7 @@ class _Header extends StatelessWidget {
                 Text(
                   'KDV BEYANNAMESİ',
                   style: TextStyle(
-                    color: Color(0xFF002045),
+                    color: AppColors.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.1,
@@ -164,7 +165,7 @@ class _Header extends StatelessWidget {
           ),
           const Icon(
             Icons.receipt_long_outlined,
-            color: Color(0xFF002045),
+            color: AppColors.primary,
             size: 18,
           ),
         ],
@@ -193,13 +194,13 @@ class _VatMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF43474E), fontSize: 11),
+          style: const TextStyle(color: AppColors.mutedText, fontSize: 11),
         ),
         const SizedBox(height: 3),
         Text(
           value,
           style: TextStyle(
-            color: valueColor ?? const Color(0xFF191C1D),
+            color: valueColor ?? AppColors.onSurface,
             fontSize: large ? 18 : 13,
             fontWeight: FontWeight.w900,
           ),

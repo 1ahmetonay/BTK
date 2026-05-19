@@ -35,6 +35,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
   List<FinanceInsightMock> _aiInsights = [];
   List<FinanceMovementMock> _finMovements = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -93,7 +94,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           trend: '+Gerçek',
           trendTone: StatusTone.success,
           icon: Icons.trending_up_outlined,
-          accentColor: const Color(0xFF2C694E),
+          accentColor: AppColors.secondary,
         ),
         FinanceSummaryMock(
           title: 'Aylık Gider',
@@ -102,7 +103,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           trend: 'Güncel',
           trendTone: StatusTone.warning,
           icon: Icons.trending_down_outlined,
-          accentColor: const Color(0xFFC6955E),
+          accentColor: AppColors.warning,
         ),
         FinanceSummaryMock(
           title: 'Net Kâr',
@@ -111,7 +112,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           trend: '${(marj * 100).toStringAsFixed(1)}% marj',
           trendTone: netKar > 0 ? StatusTone.success : StatusTone.danger,
           icon: Icons.account_balance_wallet_outlined,
-          accentColor: const Color(0xFF002045),
+          accentColor: AppColors.primary,
         ),
         FinanceSummaryMock(
           title: 'Ödenecek KDV',
@@ -120,7 +121,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           trend: 'Son gün kontrol et',
           trendTone: StatusTone.warning,
           icon: Icons.receipt_long_outlined,
-          accentColor: const Color(0xFFBA1A1A),
+          accentColor: AppColors.error,
         ),
       ];
 
@@ -268,8 +269,13 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         }
         _loading = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Finans verileri yüklenemedi: $e';
+        });
+      }
     }
   }
 
@@ -285,6 +291,29 @@ class _FinancePageState extends ConsumerState<FinancePage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() { _loading = true; _error = null; });
+                _fetchFinanceData();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
@@ -359,7 +388,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
             _kdvRow('Son Ödeme Tarihi', s.deadline),
             _kdvRow('Durum', s.statusLabel),
             const SizedBox(height: 8),
-            Text(s.warning, style: const TextStyle(fontSize: 13, color: Color(0xFF43474E), fontStyle: FontStyle.italic)),
+            Text(s.warning, style: const TextStyle(fontSize: 13, color: AppColors.mutedText, fontStyle: FontStyle.italic)),
           ],
         ),
         actions: [
@@ -375,7 +404,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF43474E))),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.mutedText)),
           Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
         ],
       ),
@@ -403,7 +432,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                       subtitle: Text('${m.source} • ${m.timestamp}'),
                       trailing: Text(m.amount, style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: m.tone == StatusTone.success ? const Color(0xFF2C694E) : const Color(0xFFBA1A1A),
+                        color: m.tone == StatusTone.success ? AppColors.secondary : AppColors.error,
                       )),
                     );
                   },
@@ -472,7 +501,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
           builder: (ctx, setDialogState) => AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.notifications_active_outlined, color: Color(0xFF002045), size: 22),
+                const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 22),
                 const SizedBox(width: 8),
                 Expanded(child: Text('$customerName — Hatırlatma', style: const TextStyle(fontSize: 16))),
               ],
@@ -488,9 +517,9 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: AppColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFC4C6CF)),
+                      border: Border.all(color: AppColors.outline),
                     ),
                     child: SelectableText(response, style: const TextStyle(fontSize: 13, height: 1.5)),
                   ),
@@ -515,18 +544,18 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFC4C6CF)),
+                        border: Border.all(color: AppColors.outline),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF002045)),
+                          const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primary),
                           const SizedBox(width: 8),
                           Text(
                             '${selectedDate.day.toString().padLeft(2, '0')}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.year}',
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                           const Spacer(),
-                          const Text('Değiştir', style: TextStyle(color: Color(0xFF002045), fontSize: 12)),
+                          const Text('Değiştir', style: TextStyle(color: AppColors.primary, fontSize: 12)),
                         ],
                       ),
                     ),
@@ -560,7 +589,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                 },
                 icon: const Icon(Icons.save_outlined, size: 18),
                 label: const Text('Hatırlatmayı Kaydet'),
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF002045)),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               ),
             ],
           ),
@@ -586,7 +615,7 @@ class _FinanceIntroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF002045),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -604,7 +633,7 @@ class _FinanceIntroCard extends StatelessWidget {
           const Text(
             'Gelir, gider, KDV ve nakit akışınızı takip edin.',
             style: TextStyle(
-              color: Color(0xFFADC7F7),
+              color: AppColors.primaryLight,
               fontSize: 14,
               height: 1.35,
             ),
@@ -621,7 +650,7 @@ class _FinanceIntroCard extends StatelessWidget {
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.auto_awesome, color: Color(0xFFB1F0CE), size: 20),
+                Icon(Icons.auto_awesome, color: AppColors.secondaryContainer, size: 20),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -693,7 +722,7 @@ class _FinanceRiskStrip extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFC4C6CF)),
+                border: Border.all(color: AppColors.outline),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,7 +732,7 @@ class _FinanceRiskStrip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFF43474E),
+                      color: AppColors.mutedText,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -756,11 +785,11 @@ class _FinanceSummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trendColor = switch (summary.trendTone) {
-      StatusTone.success => const Color(0xFF2C694E),
-      StatusTone.warning => const Color(0xFFBA1A1A),
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.info => const Color(0xFF002045),
-      StatusTone.neutral => const Color(0xFF43474E),
+      StatusTone.success => AppColors.secondary,
+      StatusTone.warning => AppColors.error,
+      StatusTone.danger => AppColors.error,
+      StatusTone.info => AppColors.primary,
+      StatusTone.neutral => AppColors.mutedText,
     };
 
     return Container(
@@ -769,7 +798,7 @@ class _FinanceSummaryTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -777,7 +806,7 @@ class _FinanceSummaryTile extends StatelessWidget {
           Text(
             summary.title,
             style: const TextStyle(
-              color: Color(0xFF43474E),
+              color: AppColors.mutedText,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -788,7 +817,7 @@ class _FinanceSummaryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF002045),
+              color: AppColors.primary,
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),

@@ -2,9 +2,12 @@
 KOBİ AI Asistan — Orkestratör Ajanı (ReAct Pattern)
 Kullanıcı sorgularını analiz edip doğru araçlara yönlendirir.
 Gemini Native Function Calling ile çok adımlı ReAct döngüsü.
+Mod-bazlı system instruction + konuşma bağlamı desteği.
 """
 
+import asyncio
 import json
+import logging
 import os
 from typing import Any
 
@@ -12,74 +15,126 @@ import google.generativeai as genai
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.tool_registry import tool_registry, TOOL_DEFINITIONS
-from prompts.orchestrator_prompt import ORCHESTRATOR_SYSTEM_PROMPT
+from prompts.orchestrator_prompt import MODE_PROMPTS, ORCHESTRATOR_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
+
+# ─── Mod-Bazlı Yapılandırma ─────────────────────────────────────────────
+_MODE_CONFIG = {
+    "balanced": {
+        "temperature": 0.7,
+        "max_iterations": 5,
+    },
+    "careful": {
+        "temperature": 0.3,
+        "max_iterations": 3,     # Daha az araç çağrısı, daha güvenli
+    },
+    "proactive": {
+        "temperature": 0.8,
+        "max_iterations": 5,     # Daha fazla araç, çapraz analiz
+    },
+}
 
 
 class OrchestratorAgent:
     """Ana orkestratör — ReAct döngüsü ile çok araçlı ajan koordinasyonu."""
 
-    MAX_ITERATIONS = 5
+    DEFAULT_MAX_ITERATIONS = 5
 
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self._model = None
+        self._models: dict[str, Any] = {}   # mode -> model cache
+        self._init_lock = asyncio.Lock()
+        self._fc_tools = None  # Shared tool definitions
 
-    @property
-    def model(self):
-        """Lazy init — Gemini modelini ilk kullanımda oluştur."""
-        if self._model is None and self.api_key:
+    def _build_fc_tools(self):
+        """Function Calling tool tanımlarını oluştur (tek sefer)."""
+        if self._fc_tools is not None:
+            return self._fc_tools
+        fc_tools = []
+        for t in TOOL_DEFINITIONS:
+            fc_tools.append(genai.protos.Tool(
+                function_declarations=[
+                    genai.protos.FunctionDeclaration(
+                        name=t["name"],
+                        description=t["description"],
+                        parameters=genai.protos.Schema(
+                            type=genai.protos.Type.OBJECT,
+                            properties={
+                                k: genai.protos.Schema(
+                                    type=_map_type(v.get("type", "string")),
+                                    description=v.get("description", ""),
+                                )
+                                for k, v in t["parameters"].get("properties", {}).items()
+                            },
+                            required=t["parameters"].get("required", []),
+                        ),
+                    )
+                ]
+            ))
+        self._fc_tools = fc_tools
+        return fc_tools
+
+    async def _get_model(self, mode: str = "balanced"):
+        """Thread-safe lazy init — mod bazlı Gemini modeli oluşturur."""
+        if mode in self._models:
+            return self._models[mode]
+        async with self._init_lock:
+            if mode in self._models:
+                return self._models[mode]
+            if not self.api_key:
+                return None
             genai.configure(api_key=self.api_key)
-            # Native Function Calling tools tanımla
-            fc_tools = []
-            for t in TOOL_DEFINITIONS:
-                fc_tools.append(genai.protos.Tool(
-                    function_declarations=[
-                        genai.protos.FunctionDeclaration(
-                            name=t["name"],
-                            description=t["description"],
-                            parameters=genai.protos.Schema(
-                                type=genai.protos.Type.OBJECT,
-                                properties={
-                                    k: genai.protos.Schema(
-                                        type=_map_type(v.get("type", "string")),
-                                        description=v.get("description", ""),
-                                    )
-                                    for k, v in t["parameters"].get("properties", {}).items()
-                                },
-                                required=t["parameters"].get("required", []),
-                            ),
-                        )
-                    ]
-                ))
-            self._model = genai.GenerativeModel(
+            fc_tools = self._build_fc_tools()
+            system_prompt = MODE_PROMPTS.get(mode, ORCHESTRATOR_SYSTEM_PROMPT)
+            model = genai.GenerativeModel(
                 model_name="gemini-2.5-flash",
                 tools=fc_tools,
-                system_instruction=ORCHESTRATOR_SYSTEM_PROMPT,
+                system_instruction=system_prompt,
             )
-        return self._model
+            self._models[mode] = model
+            return model
 
-    async def handle_query(self, db: AsyncSession, query: str, conversation_id: str | None = None) -> dict:
-        """Kullanıcı sorusunu ReAct pattern ile işler (çok adımlı döngü)."""
-        from services.conversation_service import conversation_store
+    async def handle_query(self, db: AsyncSession, query: str,
+                           history: list = None,
+                           ai_mode: str = "balanced") -> dict:
+        """Kullanıcı sorusunu ReAct pattern ile işler (çok adımlı döngü).
 
-        # Conversation tracking
-        conv_id, history = conversation_store.get_or_create(conversation_id)
+        Args:
+            db: Veritabanı oturumu
+            query: Kullanıcının sorusu (temiz — mod prefix'i eklenmez)
+            history: Önceki konuşma geçmişi (genai.protos.Content listesi)
+            ai_mode: AI çalışma modu (balanced/careful/proactive)
+        """
+        mode = ai_mode if ai_mode in _MODE_CONFIG else "balanced"
+        config = _MODE_CONFIG[mode]
+        max_iterations = config["max_iterations"]
+        temperature = config["temperature"]
 
-        if not self.api_key or not self.model:
-            mock = self._mock_response(query)
-            mock["conversation_id"] = conv_id
-            return mock
+        model = await self._get_model(mode)
+        if not self.api_key or not model:
+            return {
+                "response": "AI servisi yapılandırılmamış. Lütfen GEMINI_API_KEY tanımlayın.",
+                "tools_used": [],
+                "thinking_steps": [],
+                "error": "missing_api_key",
+            }
 
         thinking_steps = []
         tools_used = []
 
         try:
-            chat = self.model.start_chat(history=history)
-            response = chat.send_message(query)
+            chat = model.start_chat(history=history or [])
+            response = chat.send_message(
+                query,
+                generation_config=genai.GenerationConfig(
+                    temperature=temperature,
+                ),
+            )
 
             # ─── ReAct Döngüsü ─────────────────────────────────────────
             iteration = 0
-            while iteration < self.MAX_ITERATIONS:
+            while iteration < max_iterations:
                 iteration += 1
 
                 # Function call var mı kontrol et
@@ -121,9 +176,6 @@ class OrchestratorAgent:
             # Son yanıtı al
             final_text = response.text if response.text else "Analiz tamamlandı."
 
-            # Conversation history'yi güncelle
-            conversation_store.append_turn(conv_id, query, final_text)
-
             thinking_steps.append({
                 "step": "Sentez",
                 "detail": f"Toplam {len(tools_used)} araç kullanılarak yanıt üretildi."
@@ -131,50 +183,48 @@ class OrchestratorAgent:
 
             return {
                 "response": final_text,
-                "conversation_id": conv_id,
                 "tools_used": tools_used,
                 "thinking_steps": thinking_steps,
                 "iterations": iteration,
+                "ai_mode": mode,
             }
 
         except Exception as e:
-            print(f"[WARN] Orchestrator ReAct error: {e}")
-            # Hata durumunda basit yanıt dene
-            try:
-                simple_model = genai.GenerativeModel("gemini-2.5-flash")
-                # Bağlam verilerini topla
-                context_data = await self._gather_context(db)
-                simple_prompt = f"{ORCHESTRATOR_SYSTEM_PROMPT}\n\nİşletme Verileri:\n{json.dumps(context_data, ensure_ascii=False, default=str)}\n\nKullanıcı: {query}"
-                simple_response = simple_model.generate_content(simple_prompt)
-                return {
-                    "response": simple_response.text,
-                    "conversation_id": conv_id,
-                    "tools_used": ["context_fallback"],
-                    "thinking_steps": [
-                        {"step": "Fallback", "detail": f"FC hatası, bağlam ile yanıt üretildi: {str(e)[:100]}"}
-                    ],
-                }
-            except Exception as e2:
-                print(f"[WARN] Orchestrator fallback error: {e2}")
-                mock = self._mock_response(query)
-                mock["conversation_id"] = conv_id
-                return mock
+            logger.error(f"Orchestrator ReAct hatasi: {e}", exc_info=True)
+            # ─── Tek katmanlı temiz fallback ─────────────────────────
+            # ReAct başarısız olursa açık hata mesajı ver.
+            # "context_fallback" adında sahte araç gösterme.
+            error_detail = str(e)[:200]
+
+            # Hata türüne göre kullanıcıya yardımcı mesaj
+            if "quota" in error_detail.lower() or "429" in error_detail:
+                user_msg = (
+                    "AI servisi şu anda yoğun. Lütfen birkaç saniye bekleyip tekrar deneyin. "
+                    "Sorunuz kaydedildi, bir sonraki mesajınızda bağlam korunacaktır."
+                )
+            elif "api_key" in error_detail.lower() or "401" in error_detail:
+                user_msg = "AI servisi yapılandırma hatası. Lütfen sistem yöneticisine bildirin."
+            else:
+                user_msg = (
+                    "Analiz sırasında bir hata oluştu. Lütfen sorunuzu biraz farklı "
+                    "şekilde sormayı deneyin veya daha spesifik bir soru sorun.\n\n"
+                    f"Teknik detay: {error_detail}"
+                )
+
+            return {
+                "response": user_msg,
+                "tools_used": [],
+                "thinking_steps": [
+                    {"step": "Hata", "detail": error_detail}
+                ],
+                "error": "react_error",
+                "ai_mode": mode,
+            }
 
     async def synthesize_morning_brief(self, data: dict) -> str:
         """Sabah brifingi sentezler."""
         from services.gemini_service import gemini_service
         return await gemini_service.generate_morning_brief(data)
-
-    async def _gather_context(self, db: AsyncSession) -> dict:
-        """Basit bağlam verisi toplar."""
-        stock = await tool_registry.execute(db, "get_stock_status", {})
-        critical = await tool_registry.execute(db, "get_critical_stock", {})
-        overdue = await tool_registry.execute(db, "get_overdue_payments", {})
-        return {
-            "stok_durumu": stock,
-            "kritik_stoklar": critical[:5] if isinstance(critical, list) else critical,
-            "gecikmis_odemeler": overdue,
-        }
 
     def _extract_function_call(self, response) -> Any:
         """Gemini yanıtından function call çıkarır."""
@@ -186,30 +236,6 @@ class OrchestratorAgent:
         except (AttributeError, IndexError):
             pass
         return None
-
-    def _mock_response(self, query: str = "") -> dict:
-        """API key yokken veya hata durumunda mock yanıt."""
-        return {
-            "response": (
-                "Merhaba! İşletmenizin mevcut durumunu analiz ettim:\n\n"
-                "📊 **Stok:** 128 aktif ürün, 7 ürün kritik seviyede. "
-                "Türk Kahvesi 250g için acil tedarik gerekli.\n\n"
-                "💰 **Nakit:** Mevcut bakiye 91.600 TL. "
-                "14 gün sonra 42.000 TL açık riski var.\n\n"
-                "📋 **KDV:** Ödenecek KDV 1.868 TL, son gün 26 Mayıs.\n\n"
-                "⚠️ **Aksiyonlar:** Ahmet Usta Kafe'ye ödeme hatırlatması "
-                "ve Aksoy Tedarik'e kahve siparişi önerilir."
-            ),
-            "tools_used": ["get_stock_status", "get_critical_stock", "get_cash_forecast", "get_kdv_summary"],
-            "thinking_steps": [
-                {"step": "Plan", "detail": "Stok, nakit, KDV ve ödemeleri kontrol edeceğim."},
-                {"step": "Araç #1", "detail": "get_stock_status → 128 ürün, 7 kritik"},
-                {"step": "Araç #2", "detail": "get_critical_stock → Türk Kahvesi 12 adet"},
-                {"step": "Araç #3", "detail": "get_cash_forecast → 14 gün sonra risk"},
-                {"step": "Araç #4", "detail": "get_kdv_summary → 1.868 TL ödenecek"},
-                {"step": "Sentez", "detail": "4 araç kullanılarak analiz hazırlandı."},
-            ],
-        }
 
 
 def _map_type(type_str: str):

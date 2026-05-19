@@ -20,14 +20,14 @@ class StockMovementsCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFC4C6CF)),
+            border: Border.all(color: AppColors.outline),
           ),
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: movements.take(2).length,
             separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                const Divider(height: 1, color: AppColors.outlineSoft),
             itemBuilder: (context, index) {
               return _MovementRow(movement: movements[index]);
             },
@@ -60,7 +60,7 @@ class _MovementRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -71,7 +71,7 @@ class _MovementRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 11,
                   ),
                 ),
@@ -158,7 +158,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFF002045),
+        color: AppColors.primary,
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.1,

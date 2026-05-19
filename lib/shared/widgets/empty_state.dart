@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
@@ -28,17 +29,17 @@ class EmptyState extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFFE7E8E9),
+              color: AppColors.surfaceHigh,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, color: const Color(0xFF74777F), size: 28),
+            child: Icon(icon, color: AppColors.neutral, size: 28),
           ),
           const SizedBox(height: 14),
           Text(
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF43474E),
+              color: AppColors.mutedText,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -49,7 +50,7 @@ class EmptyState extends StatelessWidget {
               description!,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Color(0xFF74777F),
+                color: AppColors.neutral,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -60,7 +61,7 @@ class EmptyState extends StatelessWidget {
             FilledButton(
               onPressed: onAction,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF002045),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

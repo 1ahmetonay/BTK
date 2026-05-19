@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../settings_mock_data.dart';
@@ -31,10 +32,10 @@ class AiSettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF2C694E), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.secondary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Padding(
@@ -46,14 +47,14 @@ class AiSettingsCard extends StatelessWidget {
               children: [
                 Icon(
                   Icons.smart_toy_outlined,
-                  color: Color(0xFF2C694E),
+                  color: AppColors.secondary,
                   size: 20,
                 ),
                 SizedBox(width: 8),
                 Text(
                   'AI Asistan Ayarları',
                   style: TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
@@ -73,7 +74,7 @@ class AiSettingsCard extends StatelessWidget {
             const Text(
               'AI Çalışma Modu',
               style: TextStyle(
-                color: Color(0xFF191C1D),
+                color: AppColors.onSurface,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.8,
@@ -83,10 +84,12 @@ class AiSettingsCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE7E8E9),
+                color: AppColors.surfaceHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: Column(
+                children: [
+                  Row(
                 children: AiMode.values.map((item) {
                   final selected = mode == item;
                   return Expanded(
@@ -114,8 +117,8 @@ class AiSettingsCard extends StatelessWidget {
                           _modeLabel(item),
                           style: TextStyle(
                             color: selected
-                                ? const Color(0xFF002045)
-                                : const Color(0xFF191C1D),
+                                ? AppColors.primary
+                                : AppColors.onSurface,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -124,6 +127,20 @@ class AiSettingsCard extends StatelessWidget {
                     ),
                   );
                 }).toList(),
+              ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      _modeDescription(mode),
+                      style: const TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -137,6 +154,14 @@ class AiSettingsCard extends StatelessWidget {
       AiMode.balanced => 'Dengeli',
       AiMode.careful => 'Dikkatli',
       AiMode.proactive => 'Proaktif',
+    };
+  }
+
+  static String _modeDescription(AiMode item) {
+    return switch (item) {
+      AiMode.balanced => 'Standart analiz. Sorulara doğrudan yanıt verir, gerektiğinde öneri sunar.',
+      AiMode.careful => 'Yalnızca doğrulanmış verilerle çalışır. Belirsiz durumlarda uyarır, muhafazakâr öneriler sunar.',
+      AiMode.proactive => 'Aktif risk taraması yapar. Ek veriler kontrol eder, fırsat ve tehdit analizi sunar, what-if senaryoları önerir.',
     };
   }
 }
@@ -159,16 +184,16 @@ class _SwitchRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF191C1D)),
+            style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
           ),
         ),
         Switch(
           value: value,
           onChanged: onChanged,
           activeThumbColor: Colors.white,
-          activeTrackColor: const Color(0xFF2C694E),
+          activeTrackColor: AppColors.secondary,
           inactiveThumbColor: Colors.white,
-          inactiveTrackColor: const Color(0xFFE1E3E4),
+          inactiveTrackColor: AppColors.outlineSoft,
         ),
       ],
     );

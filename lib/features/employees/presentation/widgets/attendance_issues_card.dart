@@ -83,7 +83,7 @@ class _IssueText extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFE4E6),
+            color: AppColors.errorSurface,
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(

@@ -104,7 +104,7 @@ class _DocumentIdentity extends StatelessWidget {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
+            color: AppColors.infoSurface,
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(

@@ -3,8 +3,9 @@ KOBİ AI Asistan — Veritabanı Modelleri ve Kurulum
 SQLAlchemy ORM — PostgreSQL (production) / SQLite (development)
 """
 
+import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -16,6 +17,13 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+
+def _utcnow():
+    """Timezone-aware UTC now."""
+    return datetime.now(timezone.utc)
 
 
 # ─── Base ───────────────────────────────────────────────────────────
@@ -39,11 +47,11 @@ class Urun(Base):
     son_alis_maliyeti = Column(Float, nullable=True)
     mevcut_stok = Column(Integer, default=0)
     aktif = Column(Boolean, default=True)
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    olusturma_tarihi = Column(DateTime, default=_utcnow)
 
-    hareketler = relationship("StokHareket", back_populates="urun", lazy="selectin")
-    fiyat_gecmisi = relationship("FiyatGecmisi", back_populates="urun", lazy="selectin")
-    sayimlar = relationship("StokSayim", back_populates="urun", lazy="selectin")
+    hareketler = relationship("StokHareket", back_populates="urun", lazy="raise")
+    fiyat_gecmisi = relationship("FiyatGecmisi", back_populates="urun", lazy="raise")
+    sayimlar = relationship("StokSayim", back_populates="urun", lazy="raise")
     varsayilan_tedarikci = relationship("Tedarikci", back_populates="urunler", lazy="selectin")
 
 
@@ -53,7 +61,7 @@ class StokHareket(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     urun_id = Column(Integer, ForeignKey("urunler.id"), nullable=False, index=True)
-    tarih = Column(DateTime, default=datetime.utcnow)
+    tarih = Column(DateTime, default=_utcnow)
     miktar = Column(Float, nullable=False)
     hareket_tipi = Column(String(30))
     kaynak_belge_id = Column(Integer, nullable=True)
@@ -106,8 +114,8 @@ class Tedarikci(Base):
     guvenilirlik_skoru = Column(Float, default=5.0)
     aktif = Column(Boolean, default=True)
 
-    urunler = relationship("Urun", back_populates="varsayilan_tedarikci", lazy="selectin")
-    faturalar = relationship("Fatura", back_populates="tedarikci", lazy="selectin")
+    urunler = relationship("Urun", back_populates="varsayilan_tedarikci", lazy="raise")
+    faturalar = relationship("Fatura", back_populates="tedarikci", lazy="raise")
 
 
 # ─── Faturalar ────────────────────────────────────────────────────────
@@ -130,7 +138,7 @@ class Fatura(Base):
     belge_url = Column(Text, nullable=True)
     gemini_raw_json = Column(Text, nullable=True)
     islendi = Column(Boolean, default=False)
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    olusturma_tarihi = Column(DateTime, default=_utcnow)
 
     tedarikci = relationship("Tedarikci", back_populates="faturalar", lazy="selectin")
     kalemler = relationship("FaturaKalem", back_populates="fatura", lazy="selectin", cascade="all, delete-orphan")
@@ -166,7 +174,7 @@ class Calisan(Base):
     ise_giris_tarihi = Column(Date, nullable=True)
     aktif = Column(Boolean, default=True)
 
-    puantajlar = relationship("Puantaj", back_populates="calisan", lazy="selectin")
+    puantajlar = relationship("Puantaj", back_populates="calisan", lazy="raise")
 
 
 # ─── Puantaj Kayıtları ────────────────────────────────────────────────
@@ -186,7 +194,7 @@ class Puantaj(Base):
     sgk_kesinti = Column(Float, nullable=True)
     gelir_vergisi = Column(Float, nullable=True)
     gemini_ham_veri = Column(Text, nullable=True)
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    olusturma_tarihi = Column(DateTime, default=_utcnow)
 
     calisan = relationship("Calisan", back_populates="puantajlar")
 
@@ -200,7 +208,7 @@ class Uyari(Base):
     baslik = Column(String(200), nullable=False)
     mesaj = Column(Text, nullable=False)
     oncelik = Column(String(20), default="normal")
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    olusturma_tarihi = Column(DateTime, default=_utcnow)
     okundu = Column(Boolean, default=False)
     aksiyon_alindi = Column(Boolean, default=False)
     ilgili_entity_tipi = Column(String(30), nullable=True)
@@ -215,7 +223,7 @@ class NakitAkisi(Base):
     tarih = Column(Date, default=date.today)
     giris = Column(Float, default=0)
     cikis = Column(Float, default=0)
-    bakiye = Column(Float, default=0)
+    bakiye = Column(Float, default=0)  # Legacy — yeni hesaplama SUM(giris)-SUM(cikis) kullanır
     aciklama = Column(Text, nullable=True)
     kategori = Column(String(50), nullable=True)
     kaynak_belge_id = Column(Integer, nullable=True)
@@ -229,7 +237,7 @@ class BriefCache(Base):
     tarih = Column(Date, default=date.today, unique=True)
     brief_text = Column(Text, nullable=False)
     brief_data_json = Column(Text, nullable=True)
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    olusturma_tarihi = Column(DateTime, default=_utcnow)
 
 
 # ─── KDV Kayıtları ────────────────────────────────────────────────────
@@ -283,6 +291,6 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         if _is_sqlite:
             await conn.execute(text("PRAGMA journal_mode=WAL"))
-            print("[OK] Veritabani tablolari olusturuldu (SQLite WAL mode).")
+            logger.info("Veritabani tablolari olusturuldu (SQLite WAL mode).")
         else:
-            print("[OK] Veritabani tablolari olusturuldu (PostgreSQL).")
+            logger.info("Veritabani tablolari olusturuldu (PostgreSQL).")

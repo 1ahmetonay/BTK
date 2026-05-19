@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/empty_state.dart';
@@ -72,7 +73,7 @@ class MorningBriefCard extends StatelessWidget {
                               Text(
                                 item.detail,
                                 style: const TextStyle(
-                                  color: Color(0xFF667085),
+                                  color: AppColors.muted,
                                   height: 1.4,
                                 ),
                               ),

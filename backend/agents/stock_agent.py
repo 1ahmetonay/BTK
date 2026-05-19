@@ -5,6 +5,7 @@ Gemini ile akıllı analiz ve öneri üretir.
 """
 
 import json
+import logging
 import os
 
 import google.generativeai as genai
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.tool_registry import tool_registry
 from prompts.stock_agent_prompt import STOCK_AGENT_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class StockAgent:
@@ -38,13 +41,18 @@ class StockAgent:
                 f"{STOCK_AGENT_PROMPT}\n\n"
                 f"## Görev: {task}\n\n"
                 f"## Veri:\n```json\n{json.dumps(data, ensure_ascii=False, default=str)}\n```\n\n"
-                "Kısa ve somut Türkçe analiz yap. Maksimum 3-4 madde. "
-                "Her maddede somut aksiyon öner."
+                "Verileri derinlemesine analiz et. Yüzeysel özet YAPMA.\n"
+                "Her bulgu için somut aksiyon öner (ne yapılmalı, ne kadar, ne zaman).\n"
+                "Veriler arasında korelasyon ve çapraz ilişki ara.\n"
+                "Maksimum 4-5 madde. Her maddede sayısal veri ve somut öneri olmalı."
             )
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(temperature=0.4),
+            )
             return response.text or ""
         except Exception as e:
-            print(f"[WARN] StockAgent AI analyze error: {e}")
+            logger.error(f"StockAgent AI analiz hatasi: {e}", exc_info=True)
             return ""
 
     async def check_critical_items(self, db: AsyncSession) -> list[dict]:
@@ -63,11 +71,11 @@ class StockAgent:
             "mevsimsellik": seasonality,
         }
 
-        # AI ile yorum üret
         ai_yorum = await self._ai_analyze(
             raw_data,
             f"SKU: {sku} ürününün stok hareketleri, tedarikçi karşılaştırması "
-            "ve mevsimsel patternini analiz et. Sipariş zamanlaması öner."
+            "ve mevsimsel patternini analiz et. Sipariş zamanlaması öner. "
+            "En uygun tedarikçiyi neden seçtiğini gerekçelendir."
         )
 
         return {**raw_data, "ai_analiz": ai_yorum}
@@ -87,7 +95,8 @@ class StockAgent:
         ai_rapor = await self._ai_analyze(
             data,
             "Genel stok sağlığını değerlendir. ABC analizine göre envanter "
-            "stratejisi öner. Kritik ürünler için acil aksiyon planı hazırla."
+            "stratejisi öner. Kritik ürünler için aciliyet sıralı aksiyon planı hazırla. "
+            "C grubu ürünlerin bağladığı sermayeyi hesapla ve tasfiye önerisi ver."
         )
 
         return {**data, "ai_rapor": ai_rapor}
@@ -106,8 +115,10 @@ class StockAgent:
                         anomaliler.append({
                             "tip": "acil_stok_tukenmesi",
                             "urun": item.get("isim", "?"),
+                            "sku": item.get("sku", "?"),
                             "kalan_gun": kalan,
                             "mevcut_stok": item.get("mevcut_stok", 0),
+                            "min_stok": item.get("min_stok", 0),
                         })
 
         ai_yorum = ""
@@ -115,8 +126,11 @@ class StockAgent:
             ai_yorum = await self._ai_analyze(
                 {"anomaliler": anomaliler, "genel": overview},
                 "Tespit edilen stok anomalilerini açıkla ve her biri için "
-                "acil müdahale planı öner."
+                "acil müdahale planı öner. Her anomali için: olası neden, "
+                "risk seviyesi (kritik/yüksek/orta), önerilen aksiyon ve tahmini maliyet."
             )
+        else:
+            ai_yorum = "Stok anomalisi tespit edilmedi. Tüm ürünler normal parametrelerde."
 
         return {
             "anomali_sayisi": len(anomaliler),

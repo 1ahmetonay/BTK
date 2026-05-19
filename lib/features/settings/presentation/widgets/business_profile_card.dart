@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../settings_mock_data.dart';
@@ -74,7 +75,7 @@ class BusinessProfileCard extends StatelessWidget {
           const Text(
             'Varsayılan KDV',
             style: TextStyle(
-              color: Color(0xFF43474E),
+              color: AppColors.mutedText,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.7,
@@ -92,17 +93,17 @@ class BusinessProfileCard extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: rate == profile.defaultVatRate
-                            ? const Color(0xFF002045)
+                            ? AppColors.primary
                             : Colors.white,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFC4C6CF)),
+                        border: Border.all(color: AppColors.outline),
                       ),
                       child: Text(
                         rate,
                         style: TextStyle(
                           color: rate == profile.defaultVatRate
                               ? Colors.white
-                              : const Color(0xFF191C1D),
+                              : AppColors.onSurface,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -121,7 +122,7 @@ class BusinessProfileCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onSave,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF002045),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -162,11 +163,11 @@ class _ProfileField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFC4C6CF)),
+          borderSide: const BorderSide(color: AppColors.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF002045), width: 1.2),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
         ),
       ),
     );
@@ -183,12 +184,12 @@ class _CardTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF002045), size: 20),
+        Icon(icon, color: AppColors.primary, size: 20),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            color: Color(0xFF191C1D),
+            color: AppColors.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.w800,
           ),
@@ -211,7 +212,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),

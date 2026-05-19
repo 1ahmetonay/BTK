@@ -6,9 +6,6 @@ Diğer ajanların çıktılarından uyarı üretir, öncelik sıralar.
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from database import Uyari
 
 

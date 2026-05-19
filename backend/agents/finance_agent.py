@@ -5,6 +5,7 @@ Gemini ile akıllı finansal yorum ve risk analizi üretir.
 """
 
 import json
+import logging
 import os
 
 import google.generativeai as genai
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.tool_registry import tool_registry
 from prompts.finance_agent_prompt import FINANCE_AGENT_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class FinanceAgent:
@@ -34,13 +37,19 @@ class FinanceAgent:
                 f"{FINANCE_AGENT_PROMPT}\n\n"
                 f"## Görev: {task}\n\n"
                 f"## Veri:\n```json\n{json.dumps(data, ensure_ascii=False, default=str)}\n```\n\n"
-                "Kısa ve somut Türkçe finansal analiz yap. Maksimum 3-4 madde. "
-                "Risk seviyesi belirt (düşük/orta/yüksek). Somut aksiyon öner."
+                "Verileri derinlemesine analiz et. Yüzeysel özet YAPMA.\n"
+                "Risk seviyesi belirt (düşük/orta/yüksek/kritik) ve gerekçelendir.\n"
+                "Somut tutarlar ve tarihlerle aksiyon öner.\n"
+                "Veriler arasında çapraz ilişki kur (ör: gecikmiş tahsilat → nakit etkisi).\n"
+                "Maksimum 4-5 madde."
             )
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(temperature=0.4),
+            )
             return response.text or ""
         except Exception as e:
-            print(f"[WARN] FinanceAgent AI analyze error: {e}")
+            logger.error(f"FinanceAgent AI analiz hatasi: {e}", exc_info=True)
             return ""
 
     async def check_30day_cash_forecast(self, db: AsyncSession) -> dict:
@@ -52,8 +61,9 @@ class FinanceAgent:
         ai_yorum = await self._ai_analyze(
             data,
             "30 günlük nakit akışı projeksiyonunu analiz et. "
-            "Nakit sıkışması riski varsa tarih ve tutar belirt. "
-            "Gecikmiş ödemelerden tahsil edilmesi gerekenleri öner."
+            "Nakit sıkışması riski varsa tam tarih ve tutar belirt. "
+            "Gecikmiş ödemeler tahsil edilirse nakit pozisyon nasıl değişir hesapla. "
+            "Tahsilat öncelik sıralaması yap (tutar × gecikme gün ağırlıklı)."
         )
 
         return {**data, "ai_analiz": ai_yorum}
@@ -84,8 +94,9 @@ class FinanceAgent:
             data,
             "İşletmenin finansal sağlığını kapsamlı değerlendir. "
             "P&L marjları, nakit pozisyonu, KDV yükümlülüğü ve tahsilat "
-            "durumunu birlikte analiz et. Genel risk skoru ver (1-10). "
-            "Somut iyileştirme adımları öner."
+            "durumunu BİRLİKTE analiz et — her birini ayrı değil, ilişkili değerlendir. "
+            "Genel risk skoru ver (1-10) ve gerekçelendir. "
+            "Somut iyileştirme adımları öner, öncelik sırasıyla."
         )
 
         return {**data, "ai_rapor": ai_rapor}
@@ -110,9 +121,11 @@ class FinanceAgent:
 
         ai_yorum = await self._ai_analyze(
             risk_data,
-            "Ödeme risk analizini yap. Hangi ödemelere öncelik verilmeli? "
-            "Nakit yetersizse hangi kaynaktan karşılanabilir? "
-            "Tahsilat hızlandırma önerileri ver."
+            "Ödeme risk analizini yap. "
+            "Hangi ödemelere öncelik verilmeli? Karşılama oranını yorumla. "
+            "Nakit yetersizse: (1) hangi tahsilat hızlandırılmalı, "
+            "(2) hangi gider ertelenebilir, (3) alternatif finansman seçenekleri. "
+            "Her gecikmiş ödeme için risk skoru (1-5) ve önerilen aksiyon belirt."
         )
 
         return {**risk_data, "ai_analiz": ai_yorum}

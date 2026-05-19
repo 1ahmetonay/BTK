@@ -47,7 +47,7 @@ class AttendancePerformanceCard extends StatelessWidget {
                       minHeight: 9,
                       borderRadius: BorderRadius.circular(999),
                       color: _colorFor(employee.attendanceRate),
-                      backgroundColor: const Color(0xFFE5E7EB),
+                      backgroundColor: AppColors.gray200,
                     ),
                   ],
                 ),

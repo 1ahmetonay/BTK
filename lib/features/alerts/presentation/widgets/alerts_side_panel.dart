@@ -70,7 +70,7 @@ class _PriorityRow extends StatelessWidget {
           width: 52,
           child: Text(
             item.label,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF43474E)),
+            style: const TextStyle(fontSize: 11, color: AppColors.mutedText),
           ),
         ),
         Expanded(
@@ -79,7 +79,7 @@ class _PriorityRow extends StatelessWidget {
             minHeight: 5,
             borderRadius: BorderRadius.circular(999),
             color: color,
-            backgroundColor: const Color(0xFFEDEEEF),
+            backgroundColor: AppColors.surfaceDim,
           ),
         ),
         const SizedBox(width: 10),
@@ -93,11 +93,11 @@ class _PriorityRow extends StatelessWidget {
 
   Color _colorFor(StatusTone tone) {
     return switch (tone) {
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.warning => const Color(0xFF002045),
-      StatusTone.success => const Color(0xFF2C694E),
-      StatusTone.info => const Color(0xFF74777F),
-      StatusTone.neutral => const Color(0xFF74777F),
+      StatusTone.danger => AppColors.error,
+      StatusTone.warning => AppColors.primary,
+      StatusTone.success => AppColors.secondary,
+      StatusTone.info => AppColors.neutral,
+      StatusTone.neutral => AppColors.neutral,
     };
   }
 }
@@ -141,7 +141,7 @@ class _CategoryDistributionCard extends StatelessWidget {
           for (final item in visible) ...[
             _CategoryRow(item: item),
             if (item != visible.last)
-              const Divider(height: 12, color: Color(0xFFE1E3E4)),
+              const Divider(height: 12, color: AppColors.outlineSoft),
           ],
         ],
       ),
@@ -158,12 +158,12 @@ class _CategoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(_iconFor(item.label), color: const Color(0xFF002045), size: 18),
+        Icon(_iconFor(item.label), color: AppColors.primary, size: 18),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             item.label,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF191C1D)),
+            style: const TextStyle(fontSize: 13, color: AppColors.onSurface),
           ),
         ),
         Text(
@@ -215,7 +215,7 @@ class _PendingApprovalsCard extends StatelessWidget {
                       Text(
                         item.$1,
                         style: const TextStyle(
-                          color: Color(0xFF191C1D),
+                          color: AppColors.onSurface,
                           fontSize: 13,
                         ),
                       ),
@@ -223,7 +223,7 @@ class _PendingApprovalsCard extends StatelessWidget {
                       Text(
                         item.$2,
                         style: const TextStyle(
-                          color: Color(0xFF43474E),
+                          color: AppColors.mutedText,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -258,7 +258,7 @@ class _PanelCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: child,
     );

@@ -9,6 +9,7 @@ Ana uygulama dosyası.
   uvicorn main:app --reload --port 8000
 """
 
+import logging
 import sys
 import os
 from contextlib import asynccontextmanager
@@ -17,7 +18,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -26,7 +27,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Path düzeltmesi
+# ─── Logging Yapılandırması ──────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+# Path düzeltmesi (entry point — uvicorn buradan başlıyor)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import init_db, async_session, _is_sqlite
@@ -47,7 +56,7 @@ async def _on_fatura_islendi(**kwargs):
     """Fatura işlendiğinde tetiklenir."""
     fatura_id = kwargs.get("fatura_id")
     tur = kwargs.get("tur")
-    print(f"[EVENT] Fatura islendi: #{fatura_id} ({tur})")
+    logger.info(f"EVENT: Fatura islendi #{fatura_id} ({tur})")
 
 
 async def _on_stok_kritik(**kwargs):
@@ -60,12 +69,12 @@ async def _on_stok_kritik(**kwargs):
     mevcut = kwargs.get("mevcut", 0)
     minimum = kwargs.get("minimum", 0)
 
-    print(f"[EVENT] Stok kritik: {urun_adi} ({mevcut}/{minimum})")
+    logger.info(f"EVENT: Stok kritik — {urun_adi} ({mevcut}/{minimum})")
 
     async with async_session() as db:
         siparis = await supply_agent.handle_critical_stock(db, urun_id, urun_adi, mevcut, minimum)
         if siparis and not siparis.get("error"):
-            print(f"[EVENT] Tedarik ajani siparis taslagi hazirladi: {siparis.get('tedarikci')}")
+            logger.info(f"EVENT: Tedarik ajani siparis taslagi hazirladi — {siparis.get('tedarikci')}")
 
         await alert_agent.handle_stok_kritik(db, urun_id, urun_adi, mevcut, minimum)
 
@@ -74,13 +83,13 @@ async def _on_stok_guncellendi(**kwargs):
     """Stok güncellendiğinde tetiklenir."""
     urun_id = kwargs.get("urun_id")
     miktar = kwargs.get("miktar")
-    print(f"[EVENT] Stok guncellendi: urun #{urun_id}, degisim: {miktar}")
+    logger.info(f"EVENT: Stok guncellendi — urun #{urun_id}, degisim: {miktar}")
 
 
 async def _on_puantaj_islendi(**kwargs):
     """Puantaj işlendiğinde tetiklenir."""
     calisan_sayisi = kwargs.get("calisan_sayisi", 0)
-    print(f"[EVENT] Puantaj islendi: {calisan_sayisi} calisan")
+    logger.info(f"EVENT: Puantaj islendi — {calisan_sayisi} calisan")
 
 
 def _register_event_subscribers():
@@ -89,7 +98,7 @@ def _register_event_subscribers():
     event_bus.subscribe(Events.STOK_KRITIK, _on_stok_kritik)
     event_bus.subscribe(Events.STOK_GUNCELLENDI, _on_stok_guncellendi)
     event_bus.subscribe(Events.PUANTAJ_ISLENDI, _on_puantaj_islendi)
-    print("[OK] Event bus subscriber'lari kaydedildi (4 subscriber).")
+    logger.info("Event bus subscriber'lari kaydedildi (4 subscriber).")
 
 
 # ─── Lifespan Event ──────────────────────────────────────────────────
@@ -100,11 +109,11 @@ async def lifespan(app: FastAPI):
     _register_event_subscribers()
     scheduler_service.start()
     db_label = "SQLite" if _is_sqlite else "PostgreSQL"
-    print(f"[START] KOBI AI Asistan Backend baslatildi! ({db_label}, {APP_ENV})")
-    print("[API] Docs: http://localhost:8000/docs")
+    logger.info(f"KOBI AI Asistan Backend baslatildi! ({db_label}, {APP_ENV})")
+    logger.info("API Docs: http://localhost:8000/docs")
     yield
     scheduler_service.stop()
-    print("[STOP] Backend kapatiliyor...")
+    logger.info("Backend kapatiliyor...")
 
 
 # ─── FastAPI App ──────────────────────────────────────────────────────
@@ -151,15 +160,16 @@ if _app_env == "development":
         allow_headers=["*"],
     )
 else:
-    _cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
-    _cors_origins = (
-        ["*"] if _cors_origins_raw == "*"
-        else [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
-    )
+    _cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+    if not _cors_origins_raw:
+        logger.warning("Production modda CORS_ORIGINS tanımlanmamış! Varsayılan: sadece aynı origin.")
+        _cors_origins = []
+    else:
+        _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins,
-        allow_credentials=_cors_origins != ["*"],
+        allow_credentials=bool(_cors_origins),
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -223,10 +233,10 @@ if _flutter_web_dir.is_dir():
     # StaticFiles ile tüm Flutter web dosyalarını kök'ten serve et.
     # html=True → dizin istendiğinde index.html döner (SPA fallback).
     app.mount("/", StaticFiles(directory=str(_flutter_web_dir), html=True), name="flutter_web")
-    print(f"[OK] Flutter web dosyalari serve ediliyor: {_flutter_web_dir}")
+    logger.info(f"Flutter web dosyalari serve ediliyor: {_flutter_web_dir}")
 else:
     # Flutter build yoksa basit root endpoint
     @app.get("/")
     async def root():
         return {"message": "KOBİ AI Asistan API", "docs": "/docs", "build": "flutter build web çalıştırın"}
-    print(f"[INFO] Flutter web build bulunamadi ({_flutter_web_dir}). 'flutter build web' calistirin.")
+    logger.info(f"Flutter web build bulunamadi ({_flutter_web_dir}). 'flutter build web' calistirin.")

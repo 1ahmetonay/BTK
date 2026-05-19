@@ -66,7 +66,7 @@ extension AlertPriorityView on AlertPriority {
     return switch (this) {
       AlertPriority.critical => AppColors.rose,
       AlertPriority.high => AppColors.amber,
-      AlertPriority.medium => const Color(0xFFEAB308),
+      AlertPriority.medium => AppColors.yellowWarning,
       AlertPriority.low => AppColors.primary,
     };
   }

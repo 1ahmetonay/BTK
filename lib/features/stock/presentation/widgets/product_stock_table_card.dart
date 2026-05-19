@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/status_badge.dart';
@@ -14,14 +15,14 @@ class ProductStockTableCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: products.length,
         separatorBuilder: (_, __) =>
-            const Divider(height: 1, thickness: 1, color: Color(0xFFE1E3E4)),
+            const Divider(height: 1, thickness: 1, color: AppColors.outlineSoft),
         itemBuilder: (context, index) {
           return _ProductCard(product: products[index]);
         },
@@ -49,7 +50,7 @@ class _ProductCard extends StatelessWidget {
                 Text(
                   'SKU: ${product.sku}',
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.2,
@@ -61,7 +62,7 @@ class _ProductCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     height: 1.15,
@@ -76,15 +77,15 @@ class _ProductCard extends StatelessWidget {
                     Text(
                       product.category,
                       style: const TextStyle(
-                        color: Color(0xFF43474E),
+                        color: AppColors.mutedText,
                         fontSize: 13,
                       ),
                     ),
-                    const Text('•', style: TextStyle(color: Color(0xFFC4C6CF))),
+                    const Text('•', style: TextStyle(color: AppColors.outline)),
                     Text(
                       '${product.currentStock} adet',
                       style: const TextStyle(
-                        color: Color(0xFF002045),
+                        color: AppColors.primary,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -104,7 +105,7 @@ class _ProductCard extends StatelessWidget {
                   product.lastPurchaseCost,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),

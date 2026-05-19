@@ -68,7 +68,7 @@ class AttendanceProcessingCard extends StatelessWidget {
                   width: 58,
                   height: 58,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: AppColors.infoSurface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -116,7 +116,7 @@ class AttendanceProcessingCard extends StatelessWidget {
             minHeight: 10,
             borderRadius: BorderRadius.circular(999),
             color: AppColors.primary,
-            backgroundColor: const Color(0xFFE5E7EB),
+            backgroundColor: AppColors.gray200,
           ),
           const SizedBox(height: 8),
           Text(

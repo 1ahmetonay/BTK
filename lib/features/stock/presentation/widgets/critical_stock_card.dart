@@ -50,7 +50,7 @@ class _CriticalProductCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
@@ -75,7 +75,7 @@ class _CriticalProductCard extends StatelessWidget {
                     Text(
                       '${product.currentStock} adet / Min ${product.minimumStock}',
                       style: const TextStyle(
-                        color: Color(0xFF43474E),
+                        color: AppColors.mutedText,
                         fontSize: 13,
                         height: 1.2,
                       ),
@@ -97,7 +97,7 @@ class _CriticalProductCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onRecommend,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF002045),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -142,7 +142,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFF002045),
+        color: AppColors.primary,
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.1,

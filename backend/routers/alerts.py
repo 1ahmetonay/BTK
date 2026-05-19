@@ -1,34 +1,42 @@
 """
-KOBİ AI Asistan — Uyarılar Router
+KOBİ AI Asistan — Uyarilar Router
 """
 
-from typing import Optional
+import logging
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, update
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_db, Uyari
 
-router = APIRouter(prefix="/api/v1/alerts", tags=["Uyarılar"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/v1/alerts", tags=["Uyarilar"])
+
+_VALID_PRIORITIES = {"kritik", "yuksek", "normal", "dusuk"}
 
 
 @router.get("")
 async def get_alerts(
     oncelik: Optional[str] = Query(None, description="kritik, yuksek, normal, dusuk"),
-    okunmamis: bool = Query(False, description="Sadece okunmamış"),
+    okunmamis: bool = Query(False, description="Sadece okunmamis"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Tüm uyarıları listele."""
+    """Tum uyarilari listele."""
+    if oncelik and oncelik not in _VALID_PRIORITIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gecersiz oncelik: '{oncelik}'. Gecerli degerler: {', '.join(sorted(_VALID_PRIORITIES))}",
+        )
+
     query = select(Uyari).order_by(Uyari.olusturma_tarihi.desc())
 
     if oncelik:
         query = query.where(Uyari.oncelik == oncelik)
     if okunmamis:
-        query = query.where(Uyari.okundu == False)
+        query = query.where(Uyari.okundu == False)  # noqa: E712
 
     result = await db.execute(query)
     alerts = result.scalars().all()
@@ -50,10 +58,9 @@ async def get_alerts(
 
 @router.get("/count")
 async def get_unread_count(db: AsyncSession = Depends(get_db)):
-    """Okunmamış uyarı sayısı."""
-    from sqlalchemy import func
+    """Okunmamis uyari sayisi."""
     result = await db.execute(
-        select(func.count(Uyari.id)).where(Uyari.okundu == False)
+        select(func.count(Uyari.id)).where(Uyari.okundu == False)  # noqa: E712
     )
     count = result.scalar() or 0
     return {"count": count}
@@ -61,19 +68,23 @@ async def get_unread_count(db: AsyncSession = Depends(get_db)):
 
 @router.put("/{alert_id}/read")
 async def mark_as_read(alert_id: int, db: AsyncSession = Depends(get_db)):
-    """Uyarıyı okundu olarak işaretle."""
-    await db.execute(
+    """Uyariyi okundu olarak isaretle."""
+    result = await db.execute(
         update(Uyari).where(Uyari.id == alert_id).values(okundu=True)
     )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail=f"Uyari #{alert_id} bulunamadi")
     await db.commit()
     return {"success": True}
 
 
 @router.put("/{alert_id}/action")
 async def mark_action_taken(alert_id: int, db: AsyncSession = Depends(get_db)):
-    """Uyarı için aksiyon alındı olarak işaretle."""
-    await db.execute(
+    """Uyari icin aksiyon alindi olarak isaretle."""
+    result = await db.execute(
         update(Uyari).where(Uyari.id == alert_id).values(aksiyon_alindi=True, okundu=True)
     )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail=f"Uyari #{alert_id} bulunamadi")
     await db.commit()
     return {"success": True}

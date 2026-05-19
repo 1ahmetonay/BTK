@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/empty_state.dart';
@@ -61,10 +62,10 @@ class _SupplierTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cheapest ? const Color(0xFFEFF8F3) : Colors.white,
+        color: cheapest ? AppColors.successSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: cheapest ? const Color(0xFF95D4B3) : const Color(0xFFC4C6CF),
+          color: cheapest ? AppColors.secondaryLight : AppColors.outline,
         ),
       ),
       child: Row(
@@ -82,7 +83,7 @@ class _SupplierTile extends StatelessWidget {
                     Text(
                       supplier.supplierName,
                       style: const TextStyle(
-                        color: Color(0xFF191C1D),
+                        color: AppColors.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                       ),
@@ -94,13 +95,13 @@ class _SupplierTile extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFB1F0CE),
+                          color: AppColors.secondaryContainer,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Text(
                           'EN UCUZ',
                           style: TextStyle(
-                            color: Color(0xFF0E5138),
+                            color: AppColors.onSecondaryContainer,
                             fontSize: 8,
                             fontWeight: FontWeight.w900,
                           ),
@@ -112,7 +113,7 @@ class _SupplierTile extends StatelessWidget {
                 Text(
                   'Teslimat: ${supplier.leadTime}',
                   style: const TextStyle(
-                    color: Color(0xFF43474E),
+                    color: AppColors.mutedText,
                     fontSize: 11,
                   ),
                 ),
@@ -124,8 +125,8 @@ class _SupplierTile extends StatelessWidget {
             supplier.price,
             style: TextStyle(
               color: cheapest
-                  ? const Color(0xFF0E5138)
-                  : const Color(0xFF002045),
+                  ? AppColors.onSecondaryContainer
+                  : AppColors.primary,
               fontSize: 21,
               fontWeight: FontWeight.w900,
             ),
@@ -147,7 +148,7 @@ class _SupplierAiComment extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A365D),
+        color: AppColors.primaryDark,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -155,12 +156,12 @@ class _SupplierAiComment extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome, color: Color(0xFFADC7F7), size: 16),
+              Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 16),
               SizedBox(width: 6),
               Text(
                 'AI YORUMU',
                 style: TextStyle(
-                  color: Color(0xFFADC7F7),
+                  color: AppColors.primaryLight,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -201,7 +202,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFF002045),
+        color: AppColors.primary,
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.9,

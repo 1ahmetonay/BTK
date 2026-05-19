@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class SecurityDataCard extends StatelessWidget {
@@ -21,7 +22,7 @@ class SecurityDataCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFDAD6),
+              color: AppColors.errorContainer,
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Row(
@@ -29,7 +30,7 @@ class SecurityDataCard extends StatelessWidget {
               children: [
                 Icon(
                   Icons.warning_amber_outlined,
-                  color: Color(0xFF93000A),
+                  color: AppColors.errorDark,
                   size: 20,
                 ),
                 SizedBox(width: 10),
@@ -37,7 +38,7 @@ class SecurityDataCard extends StatelessWidget {
                   child: Text(
                     'Sistem şu anda demo modunda çalışmaktadır. Veriler bulut ile senkronize edilmez.',
                     style: TextStyle(
-                      color: Color(0xFF93000A),
+                      color: AppColors.errorDark,
                       fontSize: 13,
                       height: 1.35,
                     ),
@@ -53,7 +54,7 @@ class SecurityDataCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onCheckSystem,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF002045),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -73,8 +74,8 @@ class SecurityDataCard extends StatelessWidget {
             child: OutlinedButton(
               onPressed: onResetDemoData,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF002045),
-                side: const BorderSide(color: Color(0xFF002045)),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -105,7 +106,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: child,
     );

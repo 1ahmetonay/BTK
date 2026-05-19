@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class DocumentProcessingSettingsCard extends StatelessWidget {
@@ -28,14 +29,14 @@ class DocumentProcessingSettingsCard extends StatelessWidget {
             children: [
               Icon(
                 Icons.description_outlined,
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 size: 20,
               ),
               SizedBox(width: 8),
               Text(
                 'Belge İşleme',
                 style: TextStyle(
-                  color: Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
@@ -58,7 +59,7 @@ class DocumentProcessingSettingsCard extends StatelessWidget {
           Text(
             'Güven Skoru Eşiği (%$confidenceThreshold)',
             style: const TextStyle(
-              color: Color(0xFF191C1D),
+              color: AppColors.onSurface,
               fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
@@ -66,10 +67,10 @@ class DocumentProcessingSettingsCard extends StatelessWidget {
           ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFF002045),
-              inactiveTrackColor: const Color(0xFFE1E3E4),
-              thumbColor: const Color(0xFF002045),
-              overlayColor: const Color(0x1A002045),
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: AppColors.outlineSoft,
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primaryOverlay,
               trackHeight: 4,
             ),
             child: Slider(
@@ -123,9 +124,9 @@ class _SwitchRow extends StatelessWidget {
           value: value,
           onChanged: onChanged,
           activeThumbColor: Colors.white,
-          activeTrackColor: const Color(0xFF2C694E),
+          activeTrackColor: AppColors.secondary,
           inactiveThumbColor: Colors.white,
-          inactiveTrackColor: const Color(0xFFE1E3E4),
+          inactiveTrackColor: AppColors.outlineSoft,
         ),
       ],
     );
@@ -145,7 +146,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: child,
     );
@@ -155,7 +156,7 @@ class _SettingsCard extends StatelessWidget {
 class _TickStyle extends TextStyle {
   const _TickStyle()
     : super(
-        color: const Color(0xFF43474E),
+        color: AppColors.mutedText,
         fontSize: 10,
         fontWeight: FontWeight.w500,
       );

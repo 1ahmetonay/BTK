@@ -18,9 +18,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 # ─── UBL-TR XML Template ─────────────────────────────────────────────
 UBL_TR_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>

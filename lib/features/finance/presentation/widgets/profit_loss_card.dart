@@ -40,7 +40,7 @@ class ProfitLossCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
@@ -66,9 +66,9 @@ class ProfitLossCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFEFF8F3),
+                    color: AppColors.successSurface,
                     border: Border(
-                      left: BorderSide(color: Color(0xFF2C694E), width: 4),
+                      left: BorderSide(color: AppColors.secondary, width: 4),
                     ),
                     borderRadius: BorderRadius.only(
                       topRight: Radius.circular(8),
@@ -80,7 +80,7 @@ class ProfitLossCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.smart_toy_outlined,
-                        color: Color(0xFF2C694E),
+                        color: AppColors.secondary,
                         size: 18,
                       ),
                       const SizedBox(width: 10),
@@ -88,7 +88,7 @@ class ProfitLossCard extends StatelessWidget {
                         child: Text(
                           aiInsight,
                           style: const TextStyle(
-                            color: Color(0xFF0E5138),
+                            color: AppColors.onSecondaryContainer,
                             fontSize: 12,
                             height: 1.45,
                           ),
@@ -129,7 +129,7 @@ class _ProfitLine extends StatelessWidget {
             Expanded(
               child: Text(
                 item.label,
-                style: const TextStyle(color: Color(0xFF43474E), fontSize: 13),
+                style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
               ),
             ),
             Text(
@@ -148,7 +148,7 @@ class _ProfitLine extends StatelessWidget {
           minHeight: 5,
           borderRadius: BorderRadius.circular(999),
           color: color,
-          backgroundColor: const Color(0xFFEDEEEF),
+          backgroundColor: AppColors.surfaceDim,
         ),
       ],
     );
@@ -156,10 +156,10 @@ class _ProfitLine extends StatelessWidget {
 
   Color _colorFor(StatusTone tone) {
     return switch (tone) {
-      StatusTone.success => const Color(0xFF2C694E),
+      StatusTone.success => AppColors.secondary,
       StatusTone.warning => AppColors.amber,
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.info => const Color(0xFF002045),
+      StatusTone.danger => AppColors.error,
+      StatusTone.info => AppColors.primary,
       StatusTone.neutral => AppColors.muted,
     };
   }
@@ -176,8 +176,8 @@ class _CardHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E3E4))),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.outlineSoft)),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
@@ -186,14 +186,14 @@ class _CardHeader extends StatelessWidget {
             child: Text(
               title.toUpperCase(),
               style: const TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.1,
               ),
             ),
           ),
-          Icon(icon, color: const Color(0xFF002045), size: 18),
+          Icon(icon, color: AppColors.primary, size: 18),
         ],
       ),
     );

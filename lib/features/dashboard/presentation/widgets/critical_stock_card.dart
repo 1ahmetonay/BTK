@@ -40,8 +40,8 @@ class CriticalStockCard extends StatelessWidget {
                           height: 36,
                           decoration: BoxDecoration(
                             color: product.statusTone == StatusTone.danger
-                                ? const Color(0xFFFFE4E6)
-                                : const Color(0xFFFEF3C7),
+                                ? AppColors.errorSurface
+                                : AppColors.warningContainer,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(

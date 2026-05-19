@@ -5,13 +5,10 @@ E-fatura üretimi, listeleme ve DB kaydı.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_db, Fatura, FaturaKalem, NakitAkisi, Urun, StokHareket
 from services.invoice_service import invoice_service
@@ -22,23 +19,23 @@ router = APIRouter(prefix="/api/v1/invoice", tags=["E-Fatura"])
 
 
 class InvoiceItem(BaseModel):
-    urun_adi: str
-    miktar: float
-    birim: str = "adet"
-    birim_fiyat: float
-    kdv_orani: float = 20
+    urun_adi: str = Field(..., min_length=1, max_length=200)
+    miktar: float = Field(..., gt=0, le=1_000_000)
+    birim: str = Field(default="adet", max_length=20)
+    birim_fiyat: float = Field(..., ge=0, le=100_000_000)
+    kdv_orani: float = Field(default=20, ge=0, le=100)
     kdv_tutari: float = 0
     satir_toplam: float = 0
 
 
 class InvoiceRequest(BaseModel):
-    musteri_adi: str
-    musteri_vkn: str = ""
-    satici_adi: str = "KOBİ AI Demo İşletmesi"
-    satici_vkn: str = "1234567890"
-    kalemler: List[InvoiceItem]
-    para_birimi: str = "TRY"
-    fatura_no: Optional[str] = None
+    musteri_adi: str = Field(..., min_length=1, max_length=200)
+    musteri_vkn: str = Field(default="", max_length=20)
+    satici_adi: str = Field(default="KOBİ AI Demo İşletmesi", max_length=200)
+    satici_vkn: str = Field(default="1234567890", max_length=20)
+    kalemler: List[InvoiceItem] = Field(..., min_length=1, max_length=100)
+    para_birimi: str = Field(default="TRY", max_length=5)
+    fatura_no: Optional[str] = Field(default=None, max_length=50)
 
 
 @router.post("/generate")
@@ -162,8 +159,8 @@ async def generate_efatura(request: InvoiceRequest, db: AsyncSession = Depends(g
 
 @router.get("/list")
 async def list_invoices(
-    limit: int = 20,
-    tur: Optional[str] = None,
+    limit: int = Query(20, ge=1, le=200),
+    tur: Optional[str] = Query(None, max_length=30),
     db: AsyncSession = Depends(get_db),
 ):
     """Kesilen faturaları listele."""

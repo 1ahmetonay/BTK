@@ -55,8 +55,12 @@ class _DocumentsPageState extends State<DocumentsPage> {
       setState(() {
         _recentDocs = live;
       });
-    } catch (_) {
-      // Backend bağlantısı yoksa boş kalır
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('Son belgeler yüklenemedi: $e')));
+      }
     }
   }
 
@@ -299,22 +303,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
   }
 }
 
-class _DocumentColors {
-  const _DocumentColors._();
-
-  static const primary = Color(0xFF002045);
-  static const secondary = Color(0xFF2C694E);
-  static const secondaryContainer = Color(0xFFB1F0CE);
-  static const onSecondaryContainer = Color(0xFF0E5138);
-  static const outline = Color(0xFFC4C6CF);
-  static const outlineSoft = Color(0xFFE1E3E4);
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceLow = Color(0xFFF3F4F5);
-  static const surfaceHigh = Color(0xFFE7E8E9);
-  static const muted = Color(0xFF43474E);
-  static const error = Color(0xFFBA1A1A);
-  static const warning = Color(0xFF4F2E00);
-}
 
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard();
@@ -329,7 +317,7 @@ class _HeaderCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(width: 4, color: _DocumentColors.primary),
+            Container(width: 4, color: AppColors.primary),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -339,7 +327,7 @@ class _HeaderCard extends StatelessWidget {
                     Text(
                       'Belge İşleme',
                       style: TextStyle(
-                        color: _DocumentColors.primary,
+                        color: AppColors.primary,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                       ),
@@ -348,7 +336,7 @@ class _HeaderCard extends StatelessWidget {
                     Text(
                       'Fatura, fiş, irsaliye ve puantaj belgelerini AI ile okuyun.',
                       style: TextStyle(
-                        color: Color(0xFF191C1D),
+                        color: AppColors.onSurface,
                         fontSize: 13,
                         height: 1.35,
                         fontWeight: FontWeight.w700,
@@ -358,7 +346,7 @@ class _HeaderCard extends StatelessWidget {
                     Text(
                       'Yüklenen belgeler stok, KDV, finans ve puantaj kayıtlarına dönüştürülebilir.',
                       style: TextStyle(
-                        color: _DocumentColors.muted,
+                        color: AppColors.mutedText,
                         fontSize: 13,
                         height: 1.35,
                       ),
@@ -401,12 +389,12 @@ class _UploadCard extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: const BoxDecoration(
-              color: Color(0xFFD6E3FF),
+              color: AppColors.infoLight,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.document_scanner_outlined,
-              color: _DocumentColors.primary,
+              color: AppColors.primary,
               size: 34,
             ),
           ),
@@ -415,7 +403,7 @@ class _UploadCard extends StatelessWidget {
             'Belge yükleyin veya fotoğraf çekin',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Color(0xFF191C1D),
+              color: AppColors.onSurface,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -424,7 +412,7 @@ class _UploadCard extends StatelessWidget {
             'PDF, JPG, PNG, TIFF • Maks. 10 MB',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _DocumentColors.muted,
+              color: AppColors.mutedText,
               fontSize: 12,
             ),
           ),
@@ -433,10 +421,10 @@ class _UploadCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: _DocumentColors.surfaceLow,
+              color: AppColors.surfaceLow,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _DocumentColors.outline,
+                color: AppColors.outline,
                 style: BorderStyle.solid,
               ),
             ),
@@ -445,7 +433,7 @@ class _UploadCard extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.attach_file_outlined,
-                  color: _DocumentColors.muted,
+                  color: AppColors.mutedText,
                   size: 16,
                 ),
                 const SizedBox(width: 6),
@@ -457,7 +445,7 @@ class _UploadCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: _DocumentColors.primary,
+                      color: AppColors.primary,
                       fontSize: 12,
                     ),
                   ),
@@ -469,7 +457,7 @@ class _UploadCard extends StatelessWidget {
           _FullWidthButton(
             icon: Icons.upload_outlined,
             label: 'Belge Seç',
-            background: _DocumentColors.primary,
+            background: AppColors.primary,
             foreground: Colors.white,
             onPressed: onPickFile ?? () {},
           ),
@@ -478,8 +466,8 @@ class _UploadCard extends StatelessWidget {
             icon: Icons.photo_camera_outlined,
             label: 'Fotoğraf Çek',
             background: Colors.white,
-            foreground: _DocumentColors.primary,
-            borderColor: _DocumentColors.primary,
+            foreground: AppColors.primary,
+            borderColor: AppColors.primary,
             onPressed: onPickFile ?? () {},
           ),
           const SizedBox(height: 8),
@@ -491,15 +479,15 @@ class _UploadCard extends StatelessWidget {
                     children: [
                       SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                       SizedBox(width: 12),
-                      Text('Gemini analiz ediyor...', style: TextStyle(color: _DocumentColors.muted, fontWeight: FontWeight.w700)),
+                      Text('Gemini analiz ediyor...', style: TextStyle(color: AppColors.mutedText, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 )
               : _FullWidthButton(
                   icon: Icons.smart_toy_outlined,
                   label: 'Gemini ile Analiz Et',
-                  background: _DocumentColors.secondaryContainer,
-                  foreground: _DocumentColors.onSecondaryContainer,
+                  background: AppColors.secondaryContainer,
+                  foreground: AppColors.onSecondaryContainer,
                   onPressed: onAnalyze ?? () {},
                 ),
         ],
@@ -525,7 +513,7 @@ class _DocumentTypeSelector extends StatelessWidget {
         const Text(
           'Belge Türü',
           style: TextStyle(
-            color: Color(0xFF191C1D),
+            color: AppColors.onSurface,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -541,19 +529,19 @@ class _DocumentTypeSelector extends StatelessWidget {
                   selected: selectedType == type,
                   onSelected: (_) => onSelectionChanged(type),
                   showCheckmark: false,
-                  selectedColor: _DocumentColors.primary,
+                  selectedColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color: selectedType == type
                         ? Colors.white
-                        : _DocumentColors.muted,
+                        : AppColors.mutedText,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                   shape: StadiumBorder(
                     side: BorderSide(
                       color: selectedType == type
-                          ? _DocumentColors.primary
-                          : _DocumentColors.outline,
+                          ? AppColors.primary
+                          : AppColors.outline,
                     ),
                   ),
                 ),
@@ -597,7 +585,7 @@ class _AnalysisResultCard extends StatelessWidget {
               const Expanded(
                 child: Row(
                   children: [
-                    Icon(Icons.auto_awesome, color: _DocumentColors.primary),
+                    Icon(Icons.auto_awesome, color: AppColors.primary),
                     SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -605,7 +593,7 @@ class _AnalysisResultCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: _DocumentColors.primary,
+                          color: AppColors.primary,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
@@ -624,7 +612,7 @@ class _AnalysisResultCard extends StatelessWidget {
           Text(
             'Güven Skoru: %${(analysis.confidenceScore * 100).round()}',
             style: const TextStyle(
-              color: _DocumentColors.secondary,
+              color: AppColors.secondary,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -635,8 +623,8 @@ class _AnalysisResultCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: analysis.confidenceScore,
               minHeight: 7,
-              color: _DocumentColors.secondary,
-              backgroundColor: _DocumentColors.surfaceHigh,
+              color: AppColors.secondary,
+              backgroundColor: AppColors.surfaceHigh,
             ),
           ),
         ],
@@ -656,7 +644,7 @@ class _AnalysisRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: _DocumentColors.outlineSoft),
+          bottom: BorderSide(color: AppColors.outlineSoft),
         ),
       ),
       child: Row(
@@ -665,7 +653,7 @@ class _AnalysisRow extends StatelessWidget {
             child: Text(
               '${field.label}:',
               style: const TextStyle(
-                color: _DocumentColors.muted,
+                color: AppColors.mutedText,
                 fontSize: 13,
               ),
             ),
@@ -677,8 +665,8 @@ class _AnalysisRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: field.label == 'Genel Toplam'
-                    ? _DocumentColors.primary
-                    : const Color(0xFF191C1D),
+                    ? AppColors.primary
+                    : AppColors.onSurface,
                 fontSize: field.label == 'Genel Toplam' ? 16 : 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -711,7 +699,7 @@ class _LineItemsList extends StatelessWidget {
           child: Text(
             'Okunan Kalemler',
             style: TextStyle(
-              color: _DocumentColors.muted,
+              color: AppColors.mutedText,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -762,7 +750,7 @@ class _LineItemCard extends StatelessWidget {
                 Text(
                   values.first,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -771,7 +759,7 @@ class _LineItemCard extends StatelessWidget {
                   Text(
                     _formatDetail(headers, values, detailValues),
                     style: const TextStyle(
-                      color: _DocumentColors.muted,
+                      color: AppColors.mutedText,
                       fontSize: 13,
                     ),
                   ),
@@ -785,7 +773,7 @@ class _LineItemCard extends StatelessWidget {
               trailing,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: _DocumentColors.primary,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -818,9 +806,9 @@ class _ImpactSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _DocumentColors.surfaceHigh.withValues(alpha: 0.45),
+        color: AppColors.surfaceHigh.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _DocumentColors.outline),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,7 +816,7 @@ class _ImpactSummary extends StatelessWidget {
           const Text(
             'Bu belge işlendiğinde',
             style: TextStyle(
-              color: _DocumentColors.primary,
+              color: AppColors.primary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -839,7 +827,7 @@ class _ImpactSummary extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.check_circle_outline,
-                  color: _DocumentColors.secondary,
+                  color: AppColors.secondary,
                   size: 18,
                 ),
                 const SizedBox(width: 10),
@@ -847,7 +835,7 @@ class _ImpactSummary extends StatelessWidget {
                   child: Text(
                     item.text,
                     style: const TextStyle(
-                      color: Color(0xFF191C1D),
+                      color: AppColors.onSurface,
                       fontSize: 13,
                       height: 1.35,
                     ),
@@ -884,7 +872,7 @@ class _ActionButtons extends StatelessWidget {
           child: FilledButton(
             onPressed: onProcess,
             style: FilledButton.styleFrom(
-              backgroundColor: _DocumentColors.primary,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -903,8 +891,8 @@ class _ActionButtons extends StatelessWidget {
           child: OutlinedButton(
             onPressed: onManualEdit,
             style: OutlinedButton.styleFrom(
-              foregroundColor: _DocumentColors.muted,
-              side: const BorderSide(color: _DocumentColors.outline),
+              foregroundColor: AppColors.mutedText,
+              side: const BorderSide(color: AppColors.outline),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -915,7 +903,7 @@ class _ActionButtons extends StatelessWidget {
         const SizedBox(height: 8),
         TextButton(
           onPressed: onReject,
-          style: TextButton.styleFrom(foregroundColor: _DocumentColors.error),
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
           child: const Text('Reddet'),
         ),
       ],
@@ -941,7 +929,7 @@ class _RecentDocuments extends StatelessWidget {
                   shrinkWrap: true,
                   itemCount: items.length,
                   separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: Color(0xFFE1E3E4)),
+                      const Divider(height: 1, color: AppColors.outlineSoft),
                   itemBuilder: (_, i) {
                     final doc = items[i];
                     return ListTile(
@@ -979,7 +967,7 @@ class _RecentDocuments extends StatelessWidget {
               child: Text(
                 'Son Belgeler',
                 style: TextStyle(
-                  color: Color(0xFF191C1D),
+                  color: AppColors.onSurface,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
@@ -991,7 +979,7 @@ class _RecentDocuments extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 36),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                foregroundColor: _DocumentColors.primary,
+                foregroundColor: AppColors.primary,
               ),
               child: const Text('Tümünü Gör'),
             ),
@@ -1005,7 +993,7 @@ class _RecentDocuments extends StatelessWidget {
               for (var index = 0; index < visibleItems.length; index++) ...[
                 _RecentDocumentRow(item: visibleItems[index]),
                 if (index != visibleItems.length - 1)
-                  const Divider(height: 1, color: _DocumentColors.outline),
+                  const Divider(height: 1, color: AppColors.outline),
               ],
             ],
           ),
@@ -1032,12 +1020,12 @@ class _RecentDocumentRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _DocumentColors.surfaceHigh,
+              color: AppColors.surfaceHigh,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               _iconFor(item.documentType),
-              color: _DocumentColors.muted,
+              color: AppColors.mutedText,
               size: 21,
             ),
           ),
@@ -1051,7 +1039,7 @@ class _RecentDocumentRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1061,7 +1049,7 @@ class _RecentDocumentRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _DocumentColors.muted,
+                    color: AppColors.mutedText,
                     fontSize: 12,
                   ),
                 ),
@@ -1074,7 +1062,7 @@ class _RecentDocumentRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: success ? _DocumentColors.secondary : _DocumentColors.warning,
+              color: success ? AppColors.secondary : AppColors.warningDark,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -1113,8 +1101,8 @@ class _StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: success
-            ? _DocumentColors.secondaryContainer
-            : const Color(0xFFFFDDBA),
+            ? AppColors.secondaryContainer
+            : AppColors.warningLight,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1123,8 +1111,8 @@ class _StatusPill extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: success
-              ? _DocumentColors.onSecondaryContainer
-              : _DocumentColors.warning,
+              ? AppColors.onSecondaryContainer
+              : AppColors.warningDark,
           fontSize: 9,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.4,
@@ -1179,9 +1167,9 @@ class _FullWidthButton extends StatelessWidget {
 
 BoxDecoration _cardDecoration() {
   return BoxDecoration(
-    color: _DocumentColors.surface,
+    color: AppColors.surfaceWhite,
     borderRadius: BorderRadius.circular(10),
-    border: Border.all(color: _DocumentColors.outline),
+    border: Border.all(color: AppColors.outline),
   );
 }
 
@@ -1202,13 +1190,13 @@ class _EFaturaKesButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF1a4d2e), Color(0xFF002045)],
+              colors: [AppColors.emeraldDark, AppColors.primary],
             ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Row(
             children: [
-              Icon(Icons.receipt_long, color: Color(0xFFAEEECB), size: 22),
+              Icon(Icons.receipt_long, color: AppColors.successLight, size: 22),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1225,7 +1213,7 @@ class _EFaturaKesButton extends StatelessWidget {
                     Text(
                       'UBL-TR XML • QR Doğrulama • PDF',
                       style: TextStyle(
-                        color: Color(0xFFAEEECB),
+                        color: AppColors.successLight,
                         fontSize: 11,
                       ),
                     ),

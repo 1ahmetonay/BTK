@@ -93,7 +93,7 @@ class _BrandHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Color(0xFF98A2B3),
+                  color: AppColors.sidebarMuted,
                   fontSize: 12,
                 ),
               ),
@@ -125,17 +125,17 @@ class _SidebarItemState extends State<_SidebarItem> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.selected
+    final Color backgroundColor = widget.selected
         ? AppColors.sidebarActive
         : _hovered
-            ? const Color(0xFF182230)
+            ? AppColors.sidebarHover
             : Colors.transparent;
-    final foregroundColor = widget.selected || _hovered
+    final Color foregroundColor = widget.selected || _hovered
         ? Colors.white
-        : const Color(0xFFD0D5DD);
-    final iconColor = widget.selected || _hovered
+        : AppColors.sidebarText;
+    final Color iconColor = widget.selected || _hovered
         ? Colors.white
-        : const Color(0xFF98A2B3);
+        : AppColors.sidebarMuted;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -233,14 +233,14 @@ class _PlanSummaryState extends State<_PlanSummary> {
             ? 'Tüm veriler backend API üzerinden canlı çekiliyor.'
             : 'Backend kapalı. Ekranlar mock veriyle çalışır.';
     final borderColor = _connected
-        ? const Color(0xFF2C694E)
-        : const Color(0xFF344054);
+        ? AppColors.secondary
+        : AppColors.sidebarSubtle;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF182230),
+        color: AppColors.sidebarHover,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor),
       ),
@@ -251,7 +251,7 @@ class _PlanSummaryState extends State<_PlanSummary> {
             children: [
               Icon(
                 _connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-                color: _connected ? const Color(0xFF95D4B3) : const Color(0xFF98A2B3),
+                color: _connected ? AppColors.secondaryLight : AppColors.sidebarMuted,
                 size: 16,
               ),
               const SizedBox(width: 6),
@@ -270,7 +270,7 @@ class _PlanSummaryState extends State<_PlanSummary> {
           Text(
             subtitle,
             style: const TextStyle(
-              color: Color(0xFF98A2B3),
+              color: AppColors.sidebarMuted,
               fontSize: 12,
               height: 1.35,
             ),

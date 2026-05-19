@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,7 +31,7 @@ List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
       changeLabel: '$toplam SKU',
       changeTone: StatusTone.success,
       icon: Icons.payments_outlined,
-      accentColor: const Color(0xFF002045),
+      accentColor: AppColors.primary,
     ),
     DashboardStatData(
       title: 'Nakit Bakiye',
@@ -39,7 +40,7 @@ List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
       changeLabel: bakiye > 0 ? 'Pozitif' : 'Negatif',
       changeTone: bakiye > 0 ? StatusTone.success : StatusTone.danger,
       icon: Icons.account_balance_wallet_outlined,
-      accentColor: const Color(0xFF2C694E),
+      accentColor: AppColors.secondary,
     ),
     DashboardStatData(
       title: 'Kritik Stok',
@@ -48,7 +49,7 @@ List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
       changeLabel: kritik > 0 ? 'Dikkat' : 'İyi',
       changeTone: kritik > 0 ? StatusTone.warning : StatusTone.success,
       icon: Icons.inventory_2_outlined,
-      accentColor: const Color(0xFFC6955E),
+      accentColor: AppColors.warning,
     ),
     DashboardStatData(
       title: 'Bekleyen Ödeme',
@@ -57,7 +58,7 @@ List<DashboardStatData> _buildStatsFromApi(Map<String, dynamic> stats) {
       changeLabel: bekleyenOdeme > 0 ? 'Vadeli' : 'Temiz',
       changeTone: bekleyenOdeme > 0 ? StatusTone.danger : StatusTone.success,
       icon: Icons.receipt_long_outlined,
-      accentColor: const Color(0xFFBA1A1A),
+      accentColor: AppColors.error,
     ),
   ];
 }
@@ -116,6 +117,15 @@ class DashboardPage extends ConsumerWidget {
             const _WelcomeCard(briefing: 'Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatın.'),
             const SizedBox(height: 22),
             const _StatsStrip(stats: []),
+            const SizedBox(height: 16),
+            Center(
+              child: FilledButton.icon(
+                onPressed: () => ref.invalidate(dashboardSummaryProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tekrar Dene'),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              ),
+            ),
             const SizedBox(height: 22),
             _QuickActions(onNavigate: onNavigate),
             const SizedBox(height: 12),
@@ -126,19 +136,6 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-class _DashboardColors {
-  const _DashboardColors._();
-
-  static const primary = Color(0xFF002045);
-  static const secondary = Color(0xFF2C694E);
-  static const secondaryContainer = Color(0xFFB1F0CE);
-  static const onSecondaryContainer = Color(0xFF0E5138);
-  static const outline = Color(0xFFC4C6CF);
-  static const surface = Color(0xFFFFFFFF);
-  static const muted = Color(0xFF43474E);
-  static const error = Color(0xFFBA1A1A);
-  static const warning = Color(0xFFC6955E);
-}
 
 class _WelcomeCard extends StatelessWidget {
   const _WelcomeCard({required this.briefing});
@@ -155,7 +152,7 @@ class _WelcomeCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(width: 5, color: _DashboardColors.primary),
+            Container(width: 5, color: AppColors.primary),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -165,7 +162,7 @@ class _WelcomeCard extends StatelessWidget {
                     Text(
                       'AI Sabah Brifingi',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: _DashboardColors.primary,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w800,
                           ),
                     ),
@@ -173,7 +170,7 @@ class _WelcomeCard extends StatelessWidget {
                     Text(
                       briefing,
                       style: const TextStyle(
-                        color: _DashboardColors.muted,
+                        color: AppColors.mutedText,
                         fontSize: 16,
                         height: 1.45,
                       ),
@@ -223,7 +220,7 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCritical =
         data.title == 'Kritik Stok' || data.changeTone == StatusTone.warning;
-    final foreground = isCritical ? _DashboardColors.error : data.accentColor;
+    final foreground = isCritical ? AppColors.error : data.accentColor;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -238,7 +235,7 @@ class _StatTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _DashboardColors.muted,
+              color: AppColors.mutedText,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -249,9 +246,9 @@ class _StatTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: foreground == _DashboardColors.error
-                  ? _DashboardColors.error
-                  : _DashboardColors.primary,
+              color: foreground == AppColors.error
+                  ? AppColors.error
+                  : AppColors.primary,
               fontSize: 19,
               fontWeight: FontWeight.w800,
             ),
@@ -263,8 +260,8 @@ class _StatTile extends StatelessWidget {
                 isCritical ? Icons.warning_amber_outlined : Icons.trending_up,
                 size: 16,
                 color: isCritical
-                    ? _DashboardColors.error
-                    : _DashboardColors.secondary,
+                    ? AppColors.error
+                    : AppColors.secondary,
               ),
               const SizedBox(width: 4),
               Expanded(
@@ -274,8 +271,8 @@ class _StatTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isCritical
-                        ? _DashboardColors.error
-                        : _DashboardColors.secondary,
+                        ? AppColors.error
+                        : AppColors.secondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -312,7 +309,7 @@ void _showFullBrief(BuildContext context, String briefText) {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: const BoxDecoration(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: const Row(
@@ -338,7 +335,7 @@ void _showFullBrief(BuildContext context, String briefText) {
                   style: const TextStyle(
                     fontSize: 14,
                     height: 1.6,
-                    color: Color(0xFF1D1D1F),
+                    color: AppColors.nearBlack,
                   ),
                 ),
               ),
@@ -350,7 +347,7 @@ void _showFullBrief(BuildContext context, String briefText) {
                 child: FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF002045),
+                    backgroundColor: AppColors.primary,
                   ),
                   child: const Text('Kapat'),
                 ),
@@ -402,12 +399,12 @@ class _MorningBriefingCard extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.wb_sunny_outlined, color: _DashboardColors.primary),
+              Icon(Icons.wb_sunny_outlined, color: AppColors.primary),
               SizedBox(width: 8),
               Text(
                 'Sabah Brifingi',
                 style: TextStyle(
-                  color: _DashboardColors.primary,
+                  color: AppColors.primary,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
@@ -417,19 +414,19 @@ class _MorningBriefingCard extends StatelessWidget {
           const SizedBox(height: 16),
           _BriefLine(
             icon: Icons.error_outline,
-            iconColor: _DashboardColors.error,
+            iconColor: AppColors.error,
             text: stokText,
           ),
           const SizedBox(height: 14),
           _BriefLine(
             icon: Icons.schedule_outlined,
-            iconColor: _DashboardColors.warning,
+            iconColor: AppColors.warning,
             text: odemeText,
           ),
           const SizedBox(height: 14),
           _BriefLine(
             icon: Icons.event_outlined,
-            iconColor: _DashboardColors.primary,
+            iconColor: AppColors.primary,
             text: kdvText,
           ),
           const SizedBox(height: 20),
@@ -441,7 +438,7 @@ class _MorningBriefingCard extends StatelessWidget {
                   ? () => _showFullBrief(context, fullBriefText!)
                   : null,
               style: FilledButton.styleFrom(
-                backgroundColor: _DashboardColors.primary,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -478,7 +475,7 @@ class _BriefLine extends StatelessWidget {
           child: Text(
             text,
             style: const TextStyle(
-              color: _DashboardColors.muted,
+              color: AppColors.mutedText,
               fontSize: 15,
               height: 1.35,
             ),
@@ -573,12 +570,12 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = emphasized
-        ? _DashboardColors.onSecondaryContainer
-        : const Color(0xFF191C1D);
+        ? AppColors.onSecondaryContainer
+        : AppColors.onSurface;
 
     return Material(
       color:
-          emphasized ? _DashboardColors.secondaryContainer : _DashboardColors.surface,
+          emphasized ? AppColors.secondaryContainer : AppColors.surfaceWhite,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -588,7 +585,7 @@ class _ActionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _DashboardColors.outline),
+            border: Border.all(color: AppColors.outline),
           ),
           child: horizontal
               ? Row(
@@ -686,7 +683,7 @@ class _PriorityAlerts extends StatelessWidget {
         const Text(
           'Öncelikli Uyarılar',
           style: TextStyle(
-            color: _DashboardColors.primary,
+            color: AppColors.primary,
             fontSize: 20,
             fontWeight: FontWeight.w800,
           ),
@@ -719,10 +716,10 @@ class _AlertCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: danger ? const Color(0xFFFFF8F8) : const Color(0xFFF1EEE8),
+        color: danger ? AppColors.errorSurfaceLight : AppColors.warningSurfaceWarm,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: danger ? const Color(0xFFF2B8B5) : const Color(0xFFD8C7B3),
+          color: danger ? AppColors.errorLight : AppColors.warningMuted,
         ),
       ),
       child: Row(
@@ -734,7 +731,7 @@ class _AlertCard extends StatelessWidget {
                 Text(
                   category,
                   style: const TextStyle(
-                    color: _DashboardColors.muted,
+                    color: AppColors.mutedText,
                     fontSize: 12,
                   ),
                 ),
@@ -742,7 +739,7 @@ class _AlertCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -755,7 +752,7 @@ class _AlertCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color:
-                  danger ? _DashboardColors.error : _DashboardColors.warning,
+                  danger ? AppColors.error : AppColors.warning,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -787,12 +784,12 @@ class _AiRecommendations extends ConsumerWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.auto_awesome, color: _DashboardColors.secondary),
+            Icon(Icons.auto_awesome, color: AppColors.secondary),
             SizedBox(width: 8),
             Text(
               'AI Önerileri',
               style: TextStyle(
-                color: _DashboardColors.primary,
+                color: AppColors.primary,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -876,17 +873,17 @@ class _AiSuggestionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
-        color: _DashboardColors.surface,
+        color: AppColors.surfaceWhite,
         borderRadius: const BorderRadius.only(
           topRight: Radius.circular(10),
           bottomRight: Radius.circular(10),
         ),
-        border: Border.all(color: _DashboardColors.secondary),
+        border: Border.all(color: AppColors.secondary),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(width: 3, height: 74, color: _DashboardColors.secondary),
+          Container(width: 3, height: 74, color: AppColors.secondary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -895,7 +892,7 @@ class _AiSuggestionCard extends StatelessWidget {
                 Text(
                   message,
                   style: const TextStyle(
-                    color: _DashboardColors.muted,
+                    color: AppColors.mutedText,
                     fontSize: 14,
                     height: 1.35,
                   ),
@@ -907,7 +904,7 @@ class _AiSuggestionCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     minimumSize: const Size(0, 32),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor: _DashboardColors.secondary,
+                    foregroundColor: AppColors.secondary,
                   ),
                   label: Text(label),
                   icon: Icon(icon, size: 18),
@@ -923,8 +920,8 @@ class _AiSuggestionCard extends StatelessWidget {
 
 BoxDecoration _cardDecoration() {
   return BoxDecoration(
-    color: _DashboardColors.surface,
+    color: AppColors.surfaceWhite,
     borderRadius: BorderRadius.circular(10),
-    border: Border.all(color: _DashboardColors.outline),
+    border: Border.all(color: AppColors.outline),
   );
 }

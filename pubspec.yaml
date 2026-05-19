@@ -48,6 +48,9 @@ dependencies:
   # Grafik ve chart bileşenleri
   fl_chart: ^0.70.2
 
+  # Local storage — chat geçmişi, ayar tercihleri
+  shared_preferences: ^2.3.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

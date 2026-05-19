@@ -1,3 +1,4 @@
+import 'package:kobi_ai_asistan/core/constants/app_colors.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -39,7 +40,7 @@ class ChatConversationCard extends StatelessWidget {
             child: Text(
               'Önerilen Sorular',
               style: TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.1,
@@ -63,12 +64,12 @@ class ChatConversationCard extends StatelessWidget {
                   onPressed: () =>
                       (onQuestionSelected ?? onSubmit)(question.question),
                   backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFC4C6CF)),
+                  side: const BorderSide(color: AppColors.outline),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999),
                   ),
                   labelStyle: const TextStyle(
-                    color: Color(0xFF191C1D),
+                    color: AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -98,15 +99,15 @@ class ChatConversationCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: const BoxDecoration(
-            color: Color(0xFFF8F9FA),
-            border: Border(top: BorderSide(color: Color(0xFFC4C6CF))),
+            color: AppColors.surfaceContainerLow,
+            border: Border(top: BorderSide(color: AppColors.outline)),
           ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F5),
+              color: AppColors.surfaceLow,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFC4C6CF)),
+              border: Border.all(color: AppColors.outline),
             ),
             child: Row(
               children: [
@@ -121,7 +122,7 @@ class ChatConversationCard extends StatelessWidget {
                     } catch (_) {}
                   },
                   icon: const Icon(Icons.attach_file),
-                  color: const Color(0xFF43474E),
+                  color: AppColors.mutedText,
                   tooltip: 'Dosya ekle',
                 ),
                 Expanded(
@@ -148,7 +149,7 @@ class ChatConversationCard extends StatelessWidget {
                     onPressed: () => onSubmit(inputController.text),
                     style: FilledButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      backgroundColor: const Color(0xFF002045),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),

@@ -32,6 +32,7 @@ class _StockPageState extends ConsumerState<StockPage> {
   String _supplierInsight = '';
   List<StockInsightMock> _insights = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -206,10 +207,13 @@ class _StockPageState extends ConsumerState<StockPage> {
         ),
       ];
 
-      // ─── Tedarikçi karşılaştırma (ilk kritik ürün) ───
-      if (liveCriticals.isNotEmpty) {
+      // ─── Tedarikçi karşılaştırma (ilk kritik ürün veya ilk ürün) ───
+      final supplierSku = liveCriticals.isNotEmpty
+          ? liveCriticals.first.sku
+          : (liveAllProducts.isNotEmpty ? liveAllProducts.first.sku : null);
+      if (supplierSku != null) {
         try {
-          final firstSku = liveCriticals.first.sku;
+          final firstSku = supplierSku;
           final supplierData =
               await ApiService.instance.getSupplierComparison(firstSku);
           if (mounted) {
@@ -282,8 +286,13 @@ class _StockPageState extends ConsumerState<StockPage> {
         _insights = liveInsights;
         _loading = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Stok verileri yüklenemedi: $e';
+        });
+      }
     }
   }
 
@@ -297,6 +306,29 @@ class _StockPageState extends ConsumerState<StockPage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: AppColors.mutedText),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.mutedText)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() { _loading = true; _error = null; });
+                _fetchStockData();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
@@ -383,7 +415,7 @@ class _StockSectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        color: Color(0xFF002045),
+        color: AppColors.primary,
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.1,
@@ -403,10 +435,10 @@ class _StockIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC4C6CF)),
+        border: Border.all(color: AppColors.outline),
       ),
       foregroundDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFF002045), width: 4)),
+        border: Border(left: BorderSide(color: AppColors.primary, width: 4)),
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: const Padding(
@@ -417,7 +449,7 @@ class _StockIntroCard extends StatelessWidget {
             Text(
               'Stok Yönetimi',
               style: TextStyle(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -426,7 +458,7 @@ class _StockIntroCard extends StatelessWidget {
             Text(
               'Ürün stoklarını takip edin, kritik seviyeleri görün.',
               style: TextStyle(
-                color: Color(0xFF43474E),
+                color: AppColors.mutedText,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 height: 1.35,
@@ -482,23 +514,23 @@ class _StockSummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final toneColor = switch (summary.trendTone) {
-      StatusTone.success => const Color(0xFF2C694E),
-      StatusTone.warning => const Color(0xFFBA1A1A),
-      StatusTone.danger => const Color(0xFFBA1A1A),
-      StatusTone.info => const Color(0xFF002045),
-      StatusTone.neutral => const Color(0xFF43474E),
+      StatusTone.success => AppColors.secondary,
+      StatusTone.warning => AppColors.error,
+      StatusTone.danger => AppColors.error,
+      StatusTone.info => AppColors.primary,
+      StatusTone.neutral => AppColors.mutedText,
     };
 
     return Container(
       width: summary.value.length > 8 ? 164 : 142,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: highlighted ? const Color(0xFFFFF7F5) : Colors.white,
+        color: highlighted ? AppColors.highlightedSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: highlighted
-              ? const Color(0xFFFFDAD6)
-              : const Color(0xFFC4C6CF),
+              ? AppColors.errorContainer
+              : AppColors.outline,
         ),
       ),
       child: Column(
@@ -513,8 +545,8 @@ class _StockSummaryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: highlighted
-                  ? const Color(0xFFBA1A1A)
-                  : const Color(0xFF43474E),
+                  ? AppColors.error
+                  : AppColors.mutedText,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -526,8 +558,8 @@ class _StockSummaryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: highlighted
-                  ? const Color(0xFFBA1A1A)
-                  : const Color(0xFF002045),
+                  ? AppColors.error
+                  : AppColors.primary,
               fontSize: 19,
               fontWeight: FontWeight.w900,
             ),
@@ -577,7 +609,7 @@ class _StockSearchAndFilters extends StatelessWidget {
         TextField(
           decoration: InputDecoration(
             hintText: 'Ürün veya SKU ara',
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF74777F)),
+            prefixIcon: const Icon(Icons.search, color: AppColors.neutral),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
@@ -586,12 +618,12 @@ class _StockSearchAndFilters extends StatelessWidget {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFC4C6CF)),
+              borderSide: const BorderSide(color: AppColors.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
-                color: Color(0xFF002045),
+                color: AppColors.primary,
                 width: 1.4,
               ),
             ),
@@ -637,13 +669,13 @@ class _FilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF002045) : const Color(0xFFE7E8E9),
+          color: selected ? AppColors.primary : AppColors.surfaceHigh,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF43474E),
+            color: selected ? Colors.white : AppColors.mutedText,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
