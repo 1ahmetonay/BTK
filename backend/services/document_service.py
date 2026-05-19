@@ -177,11 +177,11 @@ class DocumentService:
         }
 
 
-    async def process_timesheet(self, db: AsyncSession, image_data: bytes,
-                                 mime_type: str = "image/jpeg") -> dict:
-        """Puantaj belgesini işler: oku → kaydet → maaş hesapla."""
+    async def analyze_timesheet(self, db: AsyncSession, image_data: bytes,
+                                mime_type: str = "image/jpeg") -> dict:
+        """Puantaj belgesini Gemini ile okur, sonuçları döndürür (DB'ye KAYDETMEZ).
+        Kullanıcı onayladıktan sonra approve_timesheet ile kaydedilir."""
 
-        # 1) Gemini ile oku
         parsed = await gemini_service.read_timesheet(image_data, mime_type)
 
         if "error" in parsed:
@@ -200,48 +200,34 @@ class DocumentService:
             izin = calisan_data.get("izin_gunu", 0)
             rapor = calisan_data.get("rapor_gunu", 0)
 
-            # Çalışan eşleştirme
             result = await db.execute(
                 select(Calisan).where(Calisan.ad_soyad.ilike(f"%{isim}%"))
             )
             calisan = result.scalar_one_or_none()
 
             if calisan:
-                # Maaş hesapla
                 brut = calisan.brut_maas or 0
                 gunluk = brut / 30
                 mesai_ucreti = mesai * (gunluk / 8) * 1.5
                 brut_toplam = calisma_gunleri * gunluk + mesai_ucreti
 
-                # Kesintiler
                 sgk = brut_toplam * 0.14
-                gelir_vergisi = (brut_toplam - sgk) * 0.15  # Basitleştirilmiş
+                gelir_vergisi = (brut_toplam - sgk) * 0.15
                 net = brut_toplam - sgk - gelir_vergisi
 
-                puantaj = Puantaj(
-                    calisan_id=calisan.id,
-                    yil=yil,
-                    ay=ay,
-                    calisma_gunleri=calisma_gunleri,
-                    mesai_saat=mesai,
-                    izin_gunu=izin,
-                    rapor_gunu=rapor,
-                    brut_maas=round(brut_toplam, 2),
-                    net_maas=round(net, 2),
-                    sgk_kesinti=round(sgk, 2),
-                    gelir_vergisi=round(gelir_vergisi, 2),
-                    gemini_ham_veri=json.dumps(calisan_data, ensure_ascii=False),
-                )
-                db.add(puantaj)
-
                 sonuclar.append({
+                    "calisan_id": calisan.id,
                     "calisan": calisan.ad_soyad,
+                    "pozisyon": calisan.pozisyon,
                     "calisma_gunu": calisma_gunleri,
                     "mesai_saat": mesai,
+                    "izin_gunu": izin,
+                    "rapor_gunu": rapor,
                     "brut_maas": round(brut_toplam, 2),
                     "net_maas": round(net, 2),
                     "sgk": round(sgk, 2),
                     "gelir_vergisi": round(gelir_vergisi, 2),
+                    "gemini_ham": calisan_data,
                 })
             else:
                 sonuclar.append({
@@ -249,10 +235,57 @@ class DocumentService:
                     "uyari": "Çalışan sistemde bulunamadı",
                 })
 
+        toplam_maas = sum(s.get("brut_maas", 0) for s in sonuclar if "brut_maas" in s)
+
+        return {
+            "success": True,
+            "donem": f"{ay}/{yil}",
+            "ay": ay,
+            "yil": yil,
+            "calisan_sayisi": len(sonuclar),
+            "toplam_brut_maas": round(toplam_maas, 2),
+            "sonuclar": sonuclar,
+        }
+
+    async def approve_timesheet(self, db: AsyncSession, analiz_data: dict) -> dict:
+        """Analiz edilmiş puantaj verisini onaylar ve DB'ye kaydeder."""
+
+        ay = analiz_data.get("ay", date.today().month)
+        yil = analiz_data.get("yil", date.today().year)
+        sonuclar = analiz_data.get("sonuclar", [])
+
+        kaydedilen = []
+
+        for s in sonuclar:
+            calisan_id = s.get("calisan_id")
+            if not calisan_id:
+                continue
+
+            puantaj = Puantaj(
+                calisan_id=calisan_id,
+                yil=yil,
+                ay=ay,
+                calisma_gunleri=s.get("calisma_gunu", 0),
+                mesai_saat=s.get("mesai_saat", 0),
+                izin_gunu=s.get("izin_gunu", 0),
+                rapor_gunu=s.get("rapor_gunu", 0),
+                brut_maas=s.get("brut_maas", 0),
+                net_maas=s.get("net_maas", 0),
+                sgk_kesinti=s.get("sgk", 0),
+                gelir_vergisi=s.get("gelir_vergisi", 0),
+                gemini_ham_veri=json.dumps(s.get("gemini_ham", {}), ensure_ascii=False),
+                onaylandi=True,
+            )
+            db.add(puantaj)
+            kaydedilen.append({
+                "calisan": s.get("calisan", ""),
+                "brut_maas": s.get("brut_maas", 0),
+                "net_maas": s.get("net_maas", 0),
+            })
+
         await db.commit()
 
-        # Toplam maaş gideri — nakit akışına ekle
-        toplam_maas = sum(s.get("brut_maas", 0) for s in sonuclar if "brut_maas" in s)
+        toplam_maas = sum(s.get("brut_maas", 0) for s in kaydedilen)
         if toplam_maas > 0:
             nakit = NakitAkisi(
                 tarih=date.today(),
@@ -263,12 +296,18 @@ class DocumentService:
             db.add(nakit)
             await db.commit()
 
+        await event_bus.emit(
+            Events.FATURA_ISLENDI,
+            fatura_id=None,
+            tur="maas",
+        )
+
         return {
             "success": True,
             "donem": f"{ay}/{yil}",
-            "calisan_sayisi": len(sonuclar),
+            "calisan_sayisi": len(kaydedilen),
             "toplam_brut_maas": round(toplam_maas, 2),
-            "sonuclar": sonuclar,
+            "kaydedilen": kaydedilen,
         }
 
     async def _match_product(self, db: AsyncSession, urun_adi: str) -> Optional[int]:

@@ -203,8 +203,8 @@ class ApiService {
 
   // ─── İK / Puantaj ─────────────────────────────────────────────────
 
-  /// Puantaj belgesi yükle ve işle
-  Future<Map<String, dynamic>> processTimesheet(
+  /// Puantaj belgesini analiz et (DB'ye kaydetmez)
+  Future<Map<String, dynamic>> analyzeTimesheet(
     List<int> fileBytes,
     String fileName,
   ) async {
@@ -212,15 +212,26 @@ class ApiService {
       'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
     });
     final response = await _dio.post(
-      '/api/v1/hr/timesheet/process',
+      '/api/v1/hr/timesheet/analyze',
       data: formData,
     );
     return response.data as Map<String, dynamic>;
   }
 
-  /// Demo modda puantaj işle
-  Future<Map<String, dynamic>> processTimesheetDemo() async {
-    final response = await _dio.post('/api/v1/hr/timesheet/process-demo');
+  /// Demo modda puantaj analiz et
+  Future<Map<String, dynamic>> analyzeTimesheetDemo() async {
+    final response = await _dio.post('/api/v1/hr/timesheet/analyze-demo');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Analiz edilmiş puantajı onayla ve DB'ye kaydet
+  Future<Map<String, dynamic>> approveTimesheet(
+    Map<String, dynamic> analizData,
+  ) async {
+    final response = await _dio.post(
+      '/api/v1/hr/timesheet/approve',
+      data: analizData,
+    );
     return response.data as Map<String, dynamic>;
   }
 

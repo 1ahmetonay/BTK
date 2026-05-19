@@ -194,6 +194,7 @@ class Puantaj(Base):
     sgk_kesinti = Column(Float, nullable=True)
     gelir_vergisi = Column(Float, nullable=True)
     gemini_ham_veri = Column(Text, nullable=True)
+    onaylandi = Column(Boolean, default=False)
     olusturma_tarihi = Column(DateTime(timezone=True), default=_utcnow)
 
     calisan = relationship("Calisan", back_populates="puantajlar")

@@ -4,7 +4,7 @@ KOBİ AI Asistan — HR (Puantaj/Çalışanlar) Router
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,29 +14,31 @@ from services.document_service import document_service
 router = APIRouter(prefix="/api/v1/hr", tags=["İK / Puantaj"])
 
 
-@router.post("/timesheet/process")
-async def process_timesheet(
+@router.post("/timesheet/analyze")
+async def analyze_timesheet(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Kağıt puantaj fotoğrafını yükle ve işle.
-    
-    Akış:
-    1. Gemini Vision ile puantaj tablosunu oku
-    2. Çalışanları eşleştir
-    3. Maaş hesapla
-    4. Puantaj kaydı oluştur
-    5. Nakit akışına gider olarak ekle
-    """
+    """Puantaj belgesini Gemini ile analiz et (DB'ye kaydetmez).
+    Sonuçlar kullanıcıya gösterilir, onay sonrası /approve ile kaydedilir."""
     content = await file.read()
     mime_type = file.content_type or "image/jpeg"
-    return await document_service.process_timesheet(db, content, mime_type)
+    return await document_service.analyze_timesheet(db, content, mime_type)
 
 
-@router.post("/timesheet/process-demo")
-async def process_timesheet_demo(db: AsyncSession = Depends(get_db)):
-    """Demo modunda puantaj işle."""
-    return await document_service.process_timesheet(db, b"", "image/jpeg")
+@router.post("/timesheet/analyze-demo")
+async def analyze_timesheet_demo(db: AsyncSession = Depends(get_db)):
+    """Demo modunda puantaj analiz et."""
+    return await document_service.analyze_timesheet(db, b"", "image/jpeg")
+
+
+@router.post("/timesheet/approve")
+async def approve_timesheet(
+    analiz_data: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Analiz edilmiş puantaj verisini onayla ve DB'ye kaydet."""
+    return await document_service.approve_timesheet(db, analiz_data)
 
 
 @router.get("/employees")
@@ -73,7 +75,7 @@ async def get_payroll(
     result = await db.execute(
         select(Puantaj, Calisan.ad_soyad, Calisan.pozisyon)
         .join(Calisan, Puantaj.calisan_id == Calisan.id)
-        .where(Puantaj.ay == ay, Puantaj.yil == yil)
+        .where(Puantaj.ay == ay, Puantaj.yil == yil, Puantaj.onaylandi == True)
         .order_by(Calisan.ad_soyad)
     )
     rows = result.all()
