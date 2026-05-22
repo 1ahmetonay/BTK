@@ -59,21 +59,30 @@ class ChatConversationCard extends StatelessWidget {
                 final question = suggestedQuestions[index];
                 final label = _shortQuestion(question.question);
 
-                return ActionChip(
-                  label: Text(label),
-                  onPressed: () =>
-                      (onQuestionSelected ?? onSubmit)(question.question),
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: AppColors.outline),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  child: ActionChip(
+                    avatar: Icon(
+                      question.icon,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    label: Text(label, overflow: TextOverflow.ellipsis),
+                    tooltip: question.question,
+                    onPressed: () =>
+                        (onQuestionSelected ?? onSubmit)(question.question),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: AppColors.outline),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    labelStyle: const TextStyle(
+                      color: AppColors.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  labelStyle: const TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
                 );
               },
             ),
@@ -114,7 +123,9 @@ class ChatConversationCard extends StatelessWidget {
                 IconButton(
                   onPressed: () async {
                     try {
-                      final result = await FilePicker.platform.pickFiles(withData: true);
+                      final result = await FilePicker.platform.pickFiles(
+                        withData: true,
+                      );
                       if (result == null || result.files.isEmpty) return;
                       final file = result.files.first;
                       onFileAttached?.call(file.name);
@@ -172,6 +183,15 @@ class ChatConversationCard extends StatelessWidget {
     }
     if (question.contains('kârlı') || question.contains('karlı')) {
       return 'En kârlı ürünler hangileri?';
+    }
+    if (question.contains('öncelik')) {
+      return 'Bugünün öncelikleri neler?';
+    }
+    if (question.contains('tedarikçi')) {
+      return 'Tedarikçi avantajlarını göster';
+    }
+    if (question.contains('Puantaj') || question.contains('puantaj')) {
+      return 'Puantaj anomalilerini kontrol et';
     }
 
     return question;

@@ -25,6 +25,41 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _isTyping = false;
   int _messageCounter = 0;
 
+  static const List<SuggestedQuestionMock> _defaultSuggestedQuestions = [
+    SuggestedQuestionMock(
+      question: 'Bugün öncelik vermem gereken 3 aksiyon nedir?',
+      icon: Icons.task_alt_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Nakit akışım önümüzdeki 30 günde riskli mi?',
+      icon: Icons.account_balance_wallet_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Kritik stoktaki ürünleri ve sipariş miktarlarını listele.',
+      icon: Icons.inventory_2_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Bu ay KDV borcum ne kadar ve son ödeme tarihi ne?',
+      icon: Icons.receipt_long_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Gecikmiş tahsilatlar için öncelik listesi çıkar.',
+      icon: Icons.warning_amber_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'En karlı ve en düşük karlı ürünler hangileri?',
+      icon: Icons.trending_up_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Tedarikçiler arasında maliyet avantajı nerede?',
+      icon: Icons.local_shipping_outlined,
+    ),
+    SuggestedQuestionMock(
+      question: 'Puantaj kayıtlarında anomali var mı?',
+      icon: Icons.groups_2_outlined,
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -69,35 +104,91 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     try {
       final data = await ApiService.instance.getAiSuggestions();
       final raw = data['suggestions'] as List<dynamic>? ?? [];
+      final apiSuggestions = raw
+          .map(_suggestionFromApi)
+          .where((suggestion) => suggestion.question.isNotEmpty)
+          .toList();
       if (!mounted) return;
       setState(() {
-        _suggestedQuestions = raw.map((s) {
-          final text = s is String ? s : (s as Map)['question']?.toString() ?? '';
-          return SuggestedQuestionMock(question: text, icon: _iconForSuggestion(text));
-        }).toList();
+        _suggestedQuestions = _mergeSuggestions(
+          apiSuggestions,
+          _defaultSuggestedQuestions,
+        );
       });
     } catch (_) {
       // Fallback — statik öneriler
       if (!mounted) return;
       setState(() {
-        _suggestedQuestions = const [
-          SuggestedQuestionMock(question: 'Nakit akışım nasıl görünüyor?', icon: Icons.account_balance_wallet_outlined),
-          SuggestedQuestionMock(question: 'Kritik stok durumu nedir?', icon: Icons.inventory_2_outlined),
-          SuggestedQuestionMock(question: 'Bu ay KDV borcum ne kadar?', icon: Icons.receipt_long_outlined),
-          SuggestedQuestionMock(question: 'Gecikmiş ödemelerim var mı?', icon: Icons.warning_amber_outlined),
-        ];
+        _suggestedQuestions = _defaultSuggestedQuestions;
       });
     }
   }
 
+  static SuggestedQuestionMock _suggestionFromApi(dynamic rawSuggestion) {
+    if (rawSuggestion is String) {
+      return SuggestedQuestionMock(
+        question: rawSuggestion.trim(),
+        icon: _iconForSuggestion(rawSuggestion),
+      );
+    }
+
+    if (rawSuggestion is Map) {
+      final text =
+          (rawSuggestion['question'] ??
+                  rawSuggestion['soru'] ??
+                  rawSuggestion['mesaj'] ??
+                  rawSuggestion['message'] ??
+                  rawSuggestion['title'] ??
+                  '')
+              .toString()
+              .trim();
+      return SuggestedQuestionMock(
+        question: text,
+        icon: _iconForSuggestion(text),
+      );
+    }
+
+    return const SuggestedQuestionMock(question: '', icon: Icons.chat_outlined);
+  }
+
+  static List<SuggestedQuestionMock> _mergeSuggestions(
+    List<SuggestedQuestionMock> primary,
+    List<SuggestedQuestionMock> fallback,
+  ) {
+    final seen = <String>{};
+    final merged = <SuggestedQuestionMock>[];
+
+    for (final suggestion in [...primary, ...fallback]) {
+      final key = suggestion.question.trim().toLowerCase();
+      if (key.isEmpty || !seen.add(key)) {
+        continue;
+      }
+      merged.add(suggestion);
+    }
+
+    return merged;
+  }
+
   static IconData _iconForSuggestion(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('nakit') || lower.contains('finans')) return Icons.account_balance_wallet_outlined;
-    if (lower.contains('stok') || lower.contains('ürün')) return Icons.inventory_2_outlined;
-    if (lower.contains('kdv') || lower.contains('vergi')) return Icons.receipt_long_outlined;
-    if (lower.contains('gecik') || lower.contains('ödeme')) return Icons.warning_amber_outlined;
-    if (lower.contains('çalışan') || lower.contains('puantaj')) return Icons.groups_2_outlined;
-    if (lower.contains('tedarik')) return Icons.local_shipping_outlined;
+    if (lower.contains('nakit') || lower.contains('finans')) {
+      return Icons.account_balance_wallet_outlined;
+    }
+    if (lower.contains('stok') || lower.contains('ürün')) {
+      return Icons.inventory_2_outlined;
+    }
+    if (lower.contains('kdv') || lower.contains('vergi')) {
+      return Icons.receipt_long_outlined;
+    }
+    if (lower.contains('gecik') || lower.contains('ödeme')) {
+      return Icons.warning_amber_outlined;
+    }
+    if (lower.contains('çalışan') || lower.contains('puantaj')) {
+      return Icons.groups_2_outlined;
+    }
+    if (lower.contains('tedarik')) {
+      return Icons.local_shipping_outlined;
+    }
     return Icons.chat_outlined;
   }
 
@@ -132,7 +223,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           onFileAttached: (name) {
             _showMessage('$name eklendi.');
           },
-          onFileBytesAttached: (name, bytes) => _handleFileAttached(name, bytes),
+          onFileBytesAttached: (name, bytes) =>
+              _handleFileAttached(name, bytes),
         ),
       ],
     );
@@ -179,12 +271,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ref.read(conversationIdProvider.notifier).set(result.conversationId);
       }
 
-      responseText = result.response.isNotEmpty ? result.response : 'Yanıt alınamadı.';
+      responseText = result.response.isNotEmpty
+          ? result.response
+          : 'Yanıt alınamadı.';
 
       // Kullanılan araçları parse et
-      tools = result.toolsUsed
-          .map((t) => ToolUsageMock(t))
-          .toList();
+      tools = result.toolsUsed.map((t) => ToolUsageMock(t)).toList();
 
       // Düşünme adımlarını parse et
       steps = result.thinkingSteps
@@ -217,19 +309,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _persistChat();
   }
 
-
   Future<void> _handleFileAttached(String name, List<int>? bytes) async {
     if (bytes == null || bytes.isEmpty) {
       _showMessage('$name dosyası okunamadı.');
       return;
     }
     setState(() {
-      _messages.add(ChatMessageMock(
-        id: 'user-file-${_messageCounter++}',
-        role: ChatRole.user,
-        message: '$name dosyası eklendi. Analiz ediliyor...',
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessageMock(
+          id: 'user-file-${_messageCounter++}',
+          role: ChatRole.user,
+          message: '$name dosyası eklendi. Analiz ediliyor...',
+          timestamp: DateTime.now(),
+        ),
+      );
       _isTyping = true;
     });
     _scrollToBottom();
@@ -237,22 +330,32 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       final result = await ApiService.instance.processDocument(bytes, name);
       if (!mounted) return;
       final geminiOut = result['gemini_output'] as Map<String, dynamic>? ?? {};
-      final tur = result['tur'] as String? ?? geminiOut['belge_tipi'] as String? ?? 'Belge';
+      final tur =
+          result['tur'] as String? ??
+          geminiOut['belge_tipi'] as String? ??
+          'Belge';
       final toplam = result['toplam_tutar'] ?? geminiOut['genel_toplam'] ?? '—';
       final kalemler = geminiOut['kalemler'] as List<dynamic>? ?? [];
-      final response = '$tur analiz edildi.\n'
+      final response =
+          '$tur analiz edildi.\n'
           'Toplam: $toplam TL\n'
           'Kalem sayısı: ${kalemler.length}\n'
           'Güven: %${((result['guven_skoru'] as num?)?.toDouble() ?? 0.9) * 100 ~/ 1}';
       setState(() {
-        _messages.add(ChatMessageMock(
-          id: 'assistant-file-${_messageCounter++}',
-          role: ChatRole.assistant,
-          message: response,
-          timestamp: DateTime.now(),
-          tools: const [ToolUsageMock('process_document')],
-          steps: const ['Dosya alındı', 'Gemini Vision ile analiz edildi', 'Sonuç oluşturuldu'],
-        ));
+        _messages.add(
+          ChatMessageMock(
+            id: 'assistant-file-${_messageCounter++}',
+            role: ChatRole.assistant,
+            message: response,
+            timestamp: DateTime.now(),
+            tools: const [ToolUsageMock('process_document')],
+            steps: const [
+              'Dosya alındı',
+              'Gemini Vision ile analiz edildi',
+              'Sonuç oluşturuldu',
+            ],
+          ),
+        );
         _isTyping = false;
       });
       _scrollToBottom();
@@ -260,12 +363,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _messages.add(ChatMessageMock(
-          id: 'assistant-err-${_messageCounter++}',
-          role: ChatRole.assistant,
-          message: 'Dosya analiz edilemedi: $e',
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(
+          ChatMessageMock(
+            id: 'assistant-err-${_messageCounter++}',
+            role: ChatRole.assistant,
+            message: 'Dosya analiz edilemedi: $e',
+            timestamp: DateTime.now(),
+          ),
+        );
         _isTyping = false;
       });
       _scrollToBottom();
