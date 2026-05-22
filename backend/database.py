@@ -304,8 +304,32 @@ async def get_db():
             await session.close()
 
 
+async def _safe_add_column(conn, table: str, column: str, col_type: str, default=None):
+    """Eksik kolonu güvenli şekilde ekler (varsa atlar). PostgreSQL + SQLite uyumlu."""
+    try:
+        if _is_sqlite:
+            # SQLite: kolon var mı kontrol et
+            result = await conn.execute(text(f"PRAGMA table_info({table})"))
+            columns = [row[1] for row in result.fetchall()]
+            if column in columns:
+                return
+            default_clause = f" DEFAULT {default}" if default is not None else ""
+            await conn.execute(text(
+                f"ALTER TABLE {table} ADD COLUMN {column} {col_type}{default_clause}"
+            ))
+        else:
+            # PostgreSQL: IF NOT EXISTS destekli
+            default_clause = f" DEFAULT {default}" if default is not None else ""
+            await conn.execute(text(
+                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {col_type}{default_clause}"
+            ))
+        logger.info(f"Migration: {table}.{column} kolonu eklendi.")
+    except Exception as e:
+        logger.debug(f"Migration atlandı ({table}.{column}): {e}")
+
+
 async def init_db():
-    """Veritabanı tablolarını oluşturur."""
+    """Veritabanı tablolarını oluşturur ve eksik kolonları ekler."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         if _is_sqlite:
@@ -313,3 +337,11 @@ async def init_db():
             logger.info("Veritabani tablolari olusturuldu (SQLite WAL mode).")
         else:
             logger.info("Veritabani tablolari olusturuldu (PostgreSQL).")
+
+        # ── Lightweight migrations — eksik kolonları ekle ──
+        await _safe_add_column(conn, "puantaj", "onaylandi", "BOOLEAN", "TRUE")
+
+        # Mevcut NULL kayıtları düzelt
+        await conn.execute(text(
+            "UPDATE puantaj SET onaylandi = TRUE WHERE onaylandi IS NULL"
+        ))
